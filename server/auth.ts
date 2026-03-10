@@ -11,10 +11,15 @@ declare module "express-session" {
 }
 
 export function setupAuth(app: Express) {
+  // Trust the Vercel reverse proxy for HTTPS termination
+  app.set('trust proxy', 1);
+
   const sessionStore = process.env.DATABASE_URL
     ? new PgSession({
       conString: process.env.DATABASE_URL,
       createTableIfMissing: true,
+      // Suppress advisory lock issues if using Supabase transaction pooler on Vercel
+      pruneSessionInterval: false,
     })
     : undefined;
 
@@ -26,7 +31,8 @@ export function setupAuth(app: Express) {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: false, // Set to true in production with HTTPS
+        // Must be true in Vercel production
+        secure: process.env.NODE_ENV === "production",
         maxAge: 24 * 60 * 60 * 1000,
         sameSite: "lax",
       },
