@@ -93,11 +93,10 @@ export default function LinkGeneratorPage() {
 
     const activeProjects = projects.filter(p => p.status === 'active');
 
-    // Link Generation Logic
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-    
+    // Link Generation Logic - always use current origin at render time
     const generateLink = (projCode: string, countryCode: string, supplierCode?: string) => {
-        const base = `${baseUrl}/track?code=${projCode}&country=${countryCode}`;
+        const origin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || '');
+        const base = `${origin}/track?code=${projCode}&country=${countryCode}`;
         if (supplierCode) return `${base}&sup=${supplierCode}&uid=[UID]`;
         return `${base}&uid=[UID]`;
     };

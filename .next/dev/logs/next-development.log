@@ -2878,3 +2878,141 @@ https://react.dev/link/hydration-mismatch
 [00:55:23.608] Server  LOG     ✓ Compiled in 211ms
 [01:01:17.633] Server  LOG     ✓ Compiled in 136ms
 [01:01:48.459] Server  LOG     ✓ Compiled in 314ms
+[01:21:38.184] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:21:38.368] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url={"/pages/s..."} tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="pages/secu...">
+        <SegmentTrieNode>
+        <SecurityPage>
+          <CallbackPage status="security" title="Security A..." badge="Security T..." description="Your sessi...">
+            <Suspense fallback={<div>}>
+              <CallbackContent status="security" title="Security A..." badge="Security T..." description="Your sessi...">
+                <div style={{...}}>
+                  <div>
+                  <style>
+                  <div>
+                  <div style={{position:"...", ...}}>
+                    <div style={{...}}>
+                      <h3>
+                      <div style={{display:"flex", ...}}>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                          <div style={{display:"flex", ...}}>
+                            <span>
+                            <span style={{fontSize:"13px",fontFamily:"'JetBrains...",color:"rgba(255, ..."}}>
++                             8:50:00 AM
+-                             8:50:00 am
+                          ...
+                        ...
+                        ...
+                  ...
+      ...
+
+[01:21:45.445] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:21:45.902] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url={"/pages/s..."} tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="pages/secu...">
+        <SegmentTrieNode>
+        <SecurityPage>
+          <CallbackPage status="security" title="Security A..." badge="Security T..." description="Your sessi...">
+            <Suspense fallback={<div>}>
+              <CallbackContent status="security" title="Security A..." badge="Security T..." description="Your sessi...">
+                <div style={{...}}>
+                  <div>
+                  <style>
+                  <div>
+                  <div style={{position:"...", ...}}>
+                    <div style={{...}}>
+                      <h3>
+                      <div style={{display:"flex", ...}}>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                          <div style={{display:"flex", ...}}>
+                            <span>
+                            <span style={{fontSize:"13px",fontFamily:"'JetBrains...",color:"rgba(255, ..."}}>
++                             8:50:00 AM
+-                             8:50:00 am
+                          ...
+                        ...
+                        ...
+                  ...
+      ...
+
+[01:21:58.726] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[01:21:58.899] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerLayoutRouter url={"/pages/s..."} tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} segmentPath={[...]} ...>
+      <SegmentViewNode type="page" pagePath="pages/secu...">
+        <SegmentTrieNode>
+        <SecurityPage>
+          <CallbackPage status="security" title="Security A..." badge="Security T..." description="Your sessi...">
+            <Suspense fallback={<div>}>
+              <CallbackContent status="security" title="Security A..." badge="Security T..." description="Your sessi...">
+                <div style={{...}}>
+                  <div>
+                  <style>
+                  <div>
+                  <div style={{position:"...", ...}}>
+                    <div style={{...}}>
+                      <h3>
+                      <div style={{display:"flex", ...}}>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                        <div>
+                          <div style={{display:"flex", ...}}>
+                            <span>
+                            <span style={{fontSize:"13px",fontFamily:"'JetBrains...",color:"rgba(255, ..."}}>
++                             8:50:00 AM
+-                             8:50:00 am
+                          ...
+                        ...
+                        ...
+                  ...
+      ...
+

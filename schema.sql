@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS supplier_assignments (
   id uuid primary key default gen_random_uuid(),
   project_code text not null,
   country_code text not null,
-  supplier_id uuid not null REFERENCES suppliers(id) ON DELETE CASCADE,
+  supplier_id uuid REFERENCES suppliers(id) ON DELETE SET NULL,
   generated_link text not null,
   status text default 'active',
   notes text,
