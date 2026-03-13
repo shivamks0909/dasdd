@@ -1,5 +1,9 @@
 {
+  "/[[...slug]]/page": "app/[[...slug]]/page.js",
+  "/api/admin/stats/route": "app/api/admin/stats/route.js",
   "/api/auth/login/route": "app/api/auth/login/route.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/link-generator/assignments/route": "app/api/link-generator/assignments/route.js",
   "/api/projects/[id]/surveys/route": "app/api/projects/[id]/surveys/route.js",
   "/api/projects/route": "app/api/projects/route.js",
   "/api/suppliers/route": "app/api/suppliers/route.js",

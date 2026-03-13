@@ -100,3 +100,14 @@
 [00:26:35.855] Server  LOG     [Tracking] Found survey: 024abe3c-4262-432f-bd64-5358b31c4fb2, URL: http://localhost:3000/survey?oi_session={oi_session}&rid={RID}
 [00:26:38.754] Server  LOG     Tracking: Redirecting to http://localhost:3000/survey?oi_session=cff1ff4d-297a-4cfa-892e-55bdcc688e35&rid=0002
 [00:26:40.241] Server  LOG     Callback Redirect: http://localhost:3000/pages/complete?pid=TEST_API_041646&uid=E2E_USER_01&ip=%3A%3A1&start=1773440047&end=1773440049&loi=0&status=complete&country=US
+[00:31:53.389] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:32:02.458] Server  LOG     [dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[00:32:02.461] Server  LOG     InsForge Client Initialized: {}
+[00:32:02.479] Server  LOG     Login attempt for: "admin"
+[00:32:04.329] Server  LOG     Admin found: "YES"
+[00:32:04.329] Server  LOG     Comparing password with hash: "$2b$10$JRV4yoR9JEuqD.Nk2nXmyeEnmgLhqRhzUZBtiboov8TRE72nEsE0W"
+[00:32:04.412] Server  LOG     Password valid: true
+[00:32:17.867] Server  LOG     [dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[00:32:17.873] Server  LOG     InsForge Client Initialized: {}
+[00:32:18.026] Server  LOG     [dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[00:32:18.030] Server  LOG     InsForge Client Initialized: {}

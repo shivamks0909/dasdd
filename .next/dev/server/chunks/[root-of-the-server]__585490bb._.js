@@ -292,7 +292,7 @@ class DatabaseStorage {
         return data ? mapProject(data) : undefined;
     }
     async getProjectByCode(projectCode) {
-        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("projects").select("*").eq("project_code", projectCode).single();
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("projects").select("*").eq("project_code", projectCode).maybeSingle();
         return data ? mapProject(data) : undefined;
     }
     async createProject(project) {
@@ -390,7 +390,7 @@ class DatabaseStorage {
         return data ? mapSupplier(data) : undefined;
     }
     async getSupplierByCode(code) {
-        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("suppliers").select("*").eq("code", code).single();
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("suppliers").select("*").eq("code", code).maybeSingle();
         return data ? mapSupplier(data) : undefined;
     }
     async createSupplier(supplier) {
@@ -446,7 +446,7 @@ class DatabaseStorage {
         return mapRespondent(data);
     }
     async getRespondentBySession(oiSession) {
-        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").eq("oi_session", oiSession).single();
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").eq("oi_session", oiSession).maybeSingle();
         return data ? mapRespondent(data) : undefined;
     }
     async updateRespondentStatus(oiSession, status) {
