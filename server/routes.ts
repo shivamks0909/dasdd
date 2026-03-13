@@ -308,14 +308,17 @@ export async function registerRoutes(
   app.post("/api/link-generator/assignments", requireAdmin, async (req: Request, res: Response) => {
     const { projectCode, countryCode, supplierId, generatedLink, notes } = req.body;
 
-    // Check for duplicate
-    const existing = await storage.getSupplierAssignmentByCombo(projectCode, countryCode, supplierId as string);
-    if (existing) {
-      return res.status(409).json({ message: "Assignment already exists for this project, country, and supplier." });
+    // Check for duplicate — only if supplierId is provided
+    if (supplierId) {
+      const existing = await storage.getSupplierAssignmentByCombo(projectCode, countryCode, supplierId as string);
+      if (existing) {
+        return res.status(409).json({ message: "Assignment already exists for this project, country, and supplier." });
+      }
     }
 
     const parsed = insertSupplierAssignmentSchema.safeParse(req.body);
     if (!parsed.success) {
+      console.error("Link Generator validation errors:", JSON.stringify(parsed.error.flatten()));
       return res.status(400).json({ message: "Validation failed", errors: parsed.error.flatten() });
     }
 
