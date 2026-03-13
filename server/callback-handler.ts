@@ -123,14 +123,21 @@ export async function handleCallback(req: Request, status: string) {
   if (finalRedirectUrl.includes('{') || finalRedirectUrl.includes('[')) {
     const pidValue = respondent.projectCode || '';
     finalRedirectUrl = finalRedirectUrl
+      .replaceAll("{{RID}}", rid)
+      .replaceAll("{{rid}}", rid)
+      .replaceAll("{{uid}}", rid)
+      .replaceAll("{{UID}}", rid)
       .replaceAll("{RID}", rid)
       .replaceAll("[RID]", rid)
       .replaceAll("{rid}", rid)
       .replaceAll("{uid}", rid)
       .replaceAll("[UID]", rid)
+      .replaceAll("{{PID}}", pidValue)
+      .replaceAll("{{pid}}", pidValue)
       .replaceAll("{PID}", pidValue)
       .replaceAll("[PID]", pidValue)
       .replaceAll("{pid}", pidValue)
+      .replaceAll("{{oi_session}}", respondent.oiSession)
       .replaceAll("{oi_session}", respondent.oiSession);
   }
 
