@@ -9043,13 +9043,13 @@ function LinkGeneratorPage() {
         setIsGenerating(true);
         try {
             for (const countryCode of selectedCountries){
-                const supplierObj = suppliers.find((s)=>s.id === Number(selectedSupplier));
+                const supplierObj = suppliers.find((s)=>s.id.toString() === selectedSupplier);
                 const supplierCode = supplierObj?.code || "";
                 const link = generateLink(selectedProject, countryCode, supplierCode);
                 await createMutation.mutateAsync({
                     projectCode: selectedProject,
                     countryCode,
-                    supplierId: Number(selectedSupplier),
+                    supplierId: selectedSupplier,
                     generatedLink: link,
                     notes: notes,
                     status: "active"
@@ -9576,7 +9576,7 @@ function LinkGeneratorPage() {
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                                 className: "text-xs font-mono text-blue-700 break-all bg-white p-2 rounded border border-blue-100 shadow-sm",
-                                                children: generateLink(selectedProject, selectedCountries[0], suppliers.find((s)=>s.id === Number(selectedSupplier))?.code || "SUP")
+                                                children: generateLink(selectedProject, selectedCountries[0], suppliers.find((s)=>s.id.toString() === selectedSupplier)?.code || "SUP")
                                             }, void 0, false, {
                                                 fileName: "[project]/client/src/pages/admin/link-generator.tsx",
                                                 lineNumber: 379,

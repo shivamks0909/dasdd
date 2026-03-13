@@ -163,13 +163,13 @@ export default function LinkGeneratorPage() {
         setIsGenerating(true);
         try {
             for (const countryCode of selectedCountries) {
-                const supplierObj = suppliers.find(s => s.id === Number(selectedSupplier));
+                const supplierObj = suppliers.find(s => s.id.toString() === selectedSupplier);
                 const supplierCode = supplierObj?.code || "";
                 const link = generateLink(selectedProject, countryCode, supplierCode);
                 await createMutation.mutateAsync({
                     projectCode: selectedProject,
                     countryCode,
-                    supplierId: Number(selectedSupplier),
+                    supplierId: selectedSupplier,
                     generatedLink: link,
                     notes: notes,
                     status: "active"
@@ -380,7 +380,7 @@ export default function LinkGeneratorPage() {
                                     {generateLink(
                                         selectedProject, 
                                         selectedCountries[0], 
-                                        suppliers.find(s => s.id === Number(selectedSupplier))?.code || "SUP"
+                                        suppliers.find(s => s.id.toString() === selectedSupplier)?.code || "SUP"
                                     )}
                                 </p>
                                 <p className="text-[10px] text-blue-500 mt-2 italic">Generating {selectedCountries.length} unique link(s)...</p>
