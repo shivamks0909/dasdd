@@ -1,20 +1,8 @@
 {
-  "/[[...slug]]/page": "app/[[...slug]]/page.js",
-  "/api/admin/stats/route": "app/api/admin/stats/route.js",
   "/api/auth/login/route": "app/api/auth/login/route.js",
-  "/api/auth/me/route": "app/api/auth/me/route.js",
-  "/api/projects/[id]/route": "app/api/projects/[id]/route.js",
   "/api/projects/[id]/surveys/route": "app/api/projects/[id]/surveys/route.js",
   "/api/projects/route": "app/api/projects/route.js",
-  "/api/respondents/route": "app/api/respondents/route.js",
-  "/api/suppliers/[id]/route": "app/api/suppliers/[id]/route.js",
   "/api/suppliers/route": "app/api/suppliers/route.js",
   "/complete/route": "app/complete/route.js",
-  "/pages/complete/page": "app/pages/complete/page.js",
-  "/pages/quotafull/page": "app/pages/quotafull/page.js",
-  "/pages/security/page": "app/pages/security/page.js",
-  "/pages/terminate/page": "app/pages/terminate/page.js",
-  "/quotafull/route": "app/quotafull/route.js",
-  "/terminate/route": "app/terminate/route.js",
-  "/track/route": "app/track/route.js"
+  "/r/[code]/route": "app/r/[code]/route.js"
 }

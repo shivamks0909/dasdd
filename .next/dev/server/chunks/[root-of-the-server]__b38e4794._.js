@@ -252,7 +252,8 @@ const mapRespondent = (data)=>({
         startedAt: data.started_at ? new Date(data.started_at) : undefined,
         completedAt: data.completed_at ? new Date(data.completed_at) : undefined,
         ipAddress: data.ip_address,
-        userAgent: data.user_agent
+        userAgent: data.user_agent,
+        surveyUrl: data.survey_url
     });
 class DatabaseStorage {
     async getAdminByUsername(username) {
@@ -435,7 +436,8 @@ class DatabaseStorage {
             fraud_score: respondent.fraudScore,
             s2s_token: respondent.s2sToken,
             ip_address: respondent.ipAddress,
-            user_agent: respondent.userAgent
+            user_agent: respondent.userAgent,
+            survey_url: respondent.surveyUrl || null
         };
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").insert([
             dbRespondent
@@ -472,14 +474,17 @@ class DatabaseStorage {
         const dbLog = {
             oi_session: log.oiSession,
             event_type: log.eventType,
-            description: log.description,
-            metadata: log.metadata
+            meta: log.meta || null
         };
+        // Include project_code if provided (tracking handler sends it)
+        if (log.projectCode) {
+            dbLog.project_code = log.projectCode;
+        }
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("activity_logs").insert([
             dbLog
         ]).select().single();
         if (!data) throw new Error("Failed to create activity log");
-        return data; // activity_logs schema usually maps well or we can add mapActivityLog if needed
+        return data;
     }
     async getActivityLogs(oiSession) {
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("activity_logs").select("*").eq("oi_session", oiSession).order("created_at", {
@@ -592,32 +597,36 @@ class DatabaseStorage {
             }));
     }
     async createSupplierAssignment(assignment) {
+        const a = assignment;
         const dbAssignment = {
-            project_code: assignment.projectCode,
-            country_code: assignment.countryCode,
-            supplier_id: assignment.supplierId,
-            status: assignment.status,
-            complete_url: assignment.completeUrl,
-            terminate_url: assignment.terminateUrl,
-            quotafull_url: assignment.quotafullUrl,
-            security_url: assignment.securityUrl
+            project_code: a.projectCode,
+            country_code: a.countryCode,
+            supplier_id: a.supplierId || null,
+            generated_link: a.generatedLink,
+            status: a.status || 'active',
+            notes: a.notes || null
         };
-        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").insert([
+        const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").insert([
             dbAssignment
         ]).select().single();
+        if (error) {
+            console.error("DB insert error for supplier_assignments:", error);
+            throw new Error(`Failed to create supplier assignment: ${error.message}`);
+        }
         if (!data) throw new Error("Failed to create supplier assignment");
         return data;
     }
     async updateSupplierAssignment(id, assignment) {
+        const a = assignment;
         const dbAssignment = {};
-        if (assignment.projectCode) dbAssignment.project_code = assignment.projectCode;
-        if (assignment.countryCode) dbAssignment.country_code = assignment.countryCode;
-        if (assignment.supplierId) dbAssignment.supplier_id = assignment.supplierId;
-        if (assignment.status) dbAssignment.status = assignment.status;
-        if (assignment.completeUrl !== undefined) dbAssignment.complete_url = assignment.completeUrl;
-        if (assignment.terminateUrl !== undefined) dbAssignment.terminate_url = assignment.terminateUrl;
-        if (assignment.quotafullUrl !== undefined) dbAssignment.quotafull_url = assignment.quotafullUrl;
-        if (assignment.securityUrl !== undefined) dbAssignment.security_url = assignment.securityUrl;
+        if (a.projectCode) dbAssignment.project_code = a.projectCode;
+        if (a.countryCode) dbAssignment.country_code = a.countryCode;
+        if (a.supplierId) dbAssignment.supplier_id = a.supplierId;
+        if (a.status) dbAssignment.status = a.status;
+        if (a.completeUrl !== undefined) dbAssignment.complete_url = a.completeUrl;
+        if (a.terminateUrl !== undefined) dbAssignment.terminate_url = a.terminateUrl;
+        if (a.quotafullUrl !== undefined) dbAssignment.quotafull_url = a.quotafullUrl;
+        if (a.securityUrl !== undefined) dbAssignment.security_url = a.securityUrl;
         const { data: updated } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").update(dbAssignment).eq("id", id).select().single();
         return updated || undefined;
     }
@@ -634,14 +643,17 @@ class DatabaseStorage {
         return data || undefined;
     }
     async createS2sConfig(config) {
+        const c = config;
         const dbConfig = {
-            project_code: config.projectCode,
-            s2s_url: config.s2sUrl,
-            token_param: config.tokenParam,
-            status_param: config.statusParam,
-            rid_param: config.ridParam,
-            additional_params: config.additionalParams
+            project_code: c.projectCode,
+            s2s_secret: c.s2sSecret,
+            require_s2s: c.requireS2S
         };
+        if (c.s2sUrl) dbConfig.s2s_url = c.s2sUrl;
+        if (c.tokenParam) dbConfig.token_param = c.tokenParam;
+        if (c.statusParam) dbConfig.status_param = c.statusParam;
+        if (c.ridParam) dbConfig.rid_param = c.ridParam;
+        if (c.additionalParams) dbConfig.additional_params = c.additionalParams;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("project_s2s_config").insert([
             dbConfig
         ]).select().single();
@@ -649,27 +661,35 @@ class DatabaseStorage {
         return data;
     }
     async updateS2sConfig(projectCode, config) {
+        const c = config;
         const dbConfig = {};
-        if (config.s2sUrl !== undefined) dbConfig.s2s_url = config.s2sUrl;
-        if (config.tokenParam !== undefined) dbConfig.token_param = config.tokenParam;
-        if (config.statusParam !== undefined) dbConfig.status_param = config.statusParam;
-        if (config.ridParam !== undefined) dbConfig.rid_param = config.ridParam;
-        if (config.additionalParams !== undefined) dbConfig.additional_params = config.additionalParams;
+        if (c.s2sUrl !== undefined) dbConfig.s2s_url = c.s2sUrl;
+        if (c.tokenParam !== undefined) dbConfig.token_param = c.tokenParam;
+        if (c.statusParam !== undefined) dbConfig.status_param = c.statusParam;
+        if (c.ridParam !== undefined) dbConfig.rid_param = c.ridParam;
+        if (c.additionalParams !== undefined) dbConfig.additional_params = c.additionalParams;
+        if (c.s2sSecret !== undefined) dbConfig.s2s_secret = c.s2sSecret;
+        if (c.requireS2S !== undefined) dbConfig.require_s2s = c.requireS2S;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("project_s2s_config").update(dbConfig).eq("project_code", projectCode).select().single();
         if (!data) throw new Error("Failed to update S2S config");
         return data;
     }
     // S2S Logs
     async createS2sLog(log) {
+        const l = log;
         const dbLog = {
-            project_code: log.projectCode,
-            oi_session: log.oiSession,
-            endpoint: log.endpoint,
-            payload: log.payload,
-            response: log.response,
-            status_code: log.statusCode,
-            success: log.success
+            project_code: l.projectCode,
+            oi_session: l.oiSession,
+            status: l.status,
+            payload: l.payload,
+            supplier_code: l.supplierCode,
+            ip_address: l.ipAddress,
+            user_agent: l.userAgent
         };
+        if (l.endpoint) dbLog.endpoint = l.endpoint;
+        if (l.response) dbLog.response = l.response;
+        if (l.statusCode) dbLog.status_code = l.statusCode;
+        if (l.success !== undefined) dbLog.success = l.success;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("s2s_logs").insert([
             dbLog
         ]).select().single();

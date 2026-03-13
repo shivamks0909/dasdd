@@ -252,7 +252,8 @@ const mapRespondent = (data)=>({
         startedAt: data.started_at ? new Date(data.started_at) : undefined,
         completedAt: data.completed_at ? new Date(data.completed_at) : undefined,
         ipAddress: data.ip_address,
-        userAgent: data.user_agent
+        userAgent: data.user_agent,
+        surveyUrl: data.survey_url
     });
 class DatabaseStorage {
     async getAdminByUsername(username) {
@@ -354,7 +355,7 @@ class DatabaseStorage {
         return (data || []).map(mapCountrySurvey);
     }
     async getCountrySurveyByCode(projectCode, countryCode) {
-        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("country_surveys").select("*").eq("project_code", projectCode).eq("country_code", countryCode).single();
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("country_surveys").select("*").eq("project_code", projectCode).eq("country_code", countryCode).maybeSingle();
         return data ? mapCountrySurvey(data) : undefined;
     }
     async createCountrySurvey(survey) {
@@ -435,7 +436,8 @@ class DatabaseStorage {
             fraud_score: respondent.fraudScore,
             s2s_token: respondent.s2sToken,
             ip_address: respondent.ipAddress,
-            user_agent: respondent.userAgent
+            user_agent: respondent.userAgent,
+            survey_url: respondent.surveyUrl || null
         };
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").insert([
             dbRespondent
@@ -463,6 +465,12 @@ class DatabaseStorage {
     }
     async getRespondents() {
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").order("started_at", {
+            ascending: false
+        });
+        return (data || []).map(mapRespondent);
+    }
+    async getRespondentsByProject(projectCode) {
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").eq("project_code", projectCode).order("started_at", {
             ascending: false
         });
         return (data || []).map(mapRespondent);
@@ -595,32 +603,36 @@ class DatabaseStorage {
             }));
     }
     async createSupplierAssignment(assignment) {
+        const a = assignment;
         const dbAssignment = {
-            project_code: assignment.projectCode,
-            country_code: assignment.countryCode,
-            supplier_id: assignment.supplierId,
-            status: assignment.status,
-            complete_url: assignment.completeUrl,
-            terminate_url: assignment.terminateUrl,
-            quotafull_url: assignment.quotafullUrl,
-            security_url: assignment.securityUrl
+            project_code: a.projectCode,
+            country_code: a.countryCode,
+            supplier_id: a.supplierId || null,
+            generated_link: a.generatedLink,
+            status: a.status || 'active',
+            notes: a.notes || null
         };
-        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").insert([
+        const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").insert([
             dbAssignment
         ]).select().single();
+        if (error) {
+            console.error("DB insert error for supplier_assignments:", error);
+            throw new Error(`Failed to create supplier assignment: ${error.message}`);
+        }
         if (!data) throw new Error("Failed to create supplier assignment");
         return data;
     }
     async updateSupplierAssignment(id, assignment) {
+        const a = assignment;
         const dbAssignment = {};
-        if (assignment.projectCode) dbAssignment.project_code = assignment.projectCode;
-        if (assignment.countryCode) dbAssignment.country_code = assignment.countryCode;
-        if (assignment.supplierId) dbAssignment.supplier_id = assignment.supplierId;
-        if (assignment.status) dbAssignment.status = assignment.status;
-        if (assignment.completeUrl !== undefined) dbAssignment.complete_url = assignment.completeUrl;
-        if (assignment.terminateUrl !== undefined) dbAssignment.terminate_url = assignment.terminateUrl;
-        if (assignment.quotafullUrl !== undefined) dbAssignment.quotafull_url = assignment.quotafullUrl;
-        if (assignment.securityUrl !== undefined) dbAssignment.security_url = assignment.securityUrl;
+        if (a.projectCode) dbAssignment.project_code = a.projectCode;
+        if (a.countryCode) dbAssignment.country_code = a.countryCode;
+        if (a.supplierId) dbAssignment.supplier_id = a.supplierId;
+        if (a.status) dbAssignment.status = a.status;
+        if (a.completeUrl !== undefined) dbAssignment.complete_url = a.completeUrl;
+        if (a.terminateUrl !== undefined) dbAssignment.terminate_url = a.terminateUrl;
+        if (a.quotafullUrl !== undefined) dbAssignment.quotafull_url = a.quotafullUrl;
+        if (a.securityUrl !== undefined) dbAssignment.security_url = a.securityUrl;
         const { data: updated } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").update(dbAssignment).eq("id", id).select().single();
         return updated || undefined;
     }
@@ -637,14 +649,17 @@ class DatabaseStorage {
         return data || undefined;
     }
     async createS2sConfig(config) {
+        const c = config;
         const dbConfig = {
-            project_code: config.projectCode,
-            s2s_url: config.s2sUrl,
-            token_param: config.tokenParam,
-            status_param: config.statusParam,
-            rid_param: config.ridParam,
-            additional_params: config.additionalParams
+            project_code: c.projectCode,
+            s2s_secret: c.s2sSecret,
+            require_s2s: c.requireS2S
         };
+        if (c.s2sUrl) dbConfig.s2s_url = c.s2sUrl;
+        if (c.tokenParam) dbConfig.token_param = c.tokenParam;
+        if (c.statusParam) dbConfig.status_param = c.statusParam;
+        if (c.ridParam) dbConfig.rid_param = c.ridParam;
+        if (c.additionalParams) dbConfig.additional_params = c.additionalParams;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("project_s2s_config").insert([
             dbConfig
         ]).select().single();
@@ -652,27 +667,35 @@ class DatabaseStorage {
         return data;
     }
     async updateS2sConfig(projectCode, config) {
+        const c = config;
         const dbConfig = {};
-        if (config.s2sUrl !== undefined) dbConfig.s2s_url = config.s2sUrl;
-        if (config.tokenParam !== undefined) dbConfig.token_param = config.tokenParam;
-        if (config.statusParam !== undefined) dbConfig.status_param = config.statusParam;
-        if (config.ridParam !== undefined) dbConfig.rid_param = config.ridParam;
-        if (config.additionalParams !== undefined) dbConfig.additional_params = config.additionalParams;
+        if (c.s2sUrl !== undefined) dbConfig.s2s_url = c.s2sUrl;
+        if (c.tokenParam !== undefined) dbConfig.token_param = c.tokenParam;
+        if (c.statusParam !== undefined) dbConfig.status_param = c.statusParam;
+        if (c.ridParam !== undefined) dbConfig.rid_param = c.ridParam;
+        if (c.additionalParams !== undefined) dbConfig.additional_params = c.additionalParams;
+        if (c.s2sSecret !== undefined) dbConfig.s2s_secret = c.s2sSecret;
+        if (c.requireS2S !== undefined) dbConfig.require_s2s = c.requireS2S;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("project_s2s_config").update(dbConfig).eq("project_code", projectCode).select().single();
         if (!data) throw new Error("Failed to update S2S config");
         return data;
     }
     // S2S Logs
     async createS2sLog(log) {
+        const l = log;
         const dbLog = {
-            project_code: log.projectCode,
-            oi_session: log.oiSession,
-            endpoint: log.endpoint,
-            payload: log.payload,
-            response: log.response,
-            status_code: log.statusCode,
-            success: log.success
+            project_code: l.projectCode,
+            oi_session: l.oiSession,
+            status: l.status,
+            payload: l.payload,
+            supplier_code: l.supplierCode,
+            ip_address: l.ipAddress,
+            user_agent: l.userAgent
         };
+        if (l.endpoint) dbLog.endpoint = l.endpoint;
+        if (l.response) dbLog.response = l.response;
+        if (l.statusCode) dbLog.status_code = l.statusCode;
+        if (l.success !== undefined) dbLog.success = l.success;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("s2s_logs").insert([
             dbLog
         ]).select().single();
@@ -954,7 +977,7 @@ const respondents = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_mod
     projectCode: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("project_code").notNull(),
     countryCode: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("country_code"),
     supplierCode: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("supplier_code"),
-    supplierRid: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("supplier_rid").notNull(),
+    supplierRid: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("supplier_rid"),
     clientRid: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("client_rid"),
     oiSession: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("oi_session").notNull().unique(),
     status: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("status").default("started"),
@@ -968,7 +991,8 @@ const respondents = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_mod
     startedAt: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$timestamp$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["timestamp"])("started_at").defaultNow(),
     completedAt: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$timestamp$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["timestamp"])("completed_at"),
     ipAddress: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("ip_address"),
-    userAgent: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("user_agent")
+    userAgent: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("user_agent"),
+    surveyUrl: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("survey_url")
 });
 const activityLogs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$table$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["pgTable"])("activity_logs", {
     id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$uuid$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["uuid"])("id").primaryKey().defaultRandom(),
@@ -982,7 +1006,7 @@ const supplierAssignments = (0, __TURBOPACK__imported__module__$5b$project$5d2f$
     id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$uuid$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["uuid"])("id").primaryKey().defaultRandom(),
     projectCode: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("project_code").notNull(),
     countryCode: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("country_code").notNull(),
-    supplierId: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$uuid$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["uuid"])("supplier_id").notNull().references(()=>suppliers.id, {
+    supplierId: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$uuid$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["uuid"])("supplier_id").references(()=>suppliers.id, {
         onDelete: 'cascade'
     }),
     generatedLink: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("generated_link").notNull(),
@@ -1096,7 +1120,8 @@ const respondentSchema = __TURBOPACK__imported__module__$5b$project$5d2f$node_mo
     startedAt: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].date().optional(),
     completedAt: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].date().nullable().optional(),
     ipAddress: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),
-    userAgent: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional()
+    userAgent: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),
+    surveyUrl: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional()
 });
 const insertRespondentSchema = respondentSchema.omit({
     id: true,
@@ -1118,7 +1143,7 @@ const supplierAssignmentSchema = __TURBOPACK__imported__module__$5b$project$5d2f
     id: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
     projectCode: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
     countryCode: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
-    supplierId: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
+    supplierId: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),
     generatedLink: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
     status: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().default("active"),
     notes: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),

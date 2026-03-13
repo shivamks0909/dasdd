@@ -15,11 +15,12 @@ export interface SessionParams {
   status: string;
   rawStart: string | null;
   rawEnd: string | null;
+  timestamp: string;
+  session: string;
   // Legacy aliases
   start: string;
   end: string;
   loi: string;
-  timestamp: string;
 }
 
 export function formatTimestamp(unix: string | null): string {
@@ -80,6 +81,7 @@ export function getSessionParams(search: string): SessionParams {
   const reason = searchParams.get("reason") || "-";
   const country = searchParams.get("country") || "-";
   const status = searchParams.get("status") || "-";
+  const session = searchParams.get("session") || "-";
 
   const entryTime = formatTimestamp(startRaw);
   const exitTime = formatTimestamp(endRaw);
@@ -125,6 +127,7 @@ export function getSessionParams(search: string): SessionParams {
     end: exitTime,
     loi: loiMinutes,
     timestamp: currentTime,
+    session,
   };
 }
 

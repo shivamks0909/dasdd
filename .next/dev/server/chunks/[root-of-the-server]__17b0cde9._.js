@@ -252,7 +252,8 @@ const mapRespondent = (data)=>({
         startedAt: data.started_at ? new Date(data.started_at) : undefined,
         completedAt: data.completed_at ? new Date(data.completed_at) : undefined,
         ipAddress: data.ip_address,
-        userAgent: data.user_agent
+        userAgent: data.user_agent,
+        surveyUrl: data.survey_url
     });
 class DatabaseStorage {
     async getAdminByUsername(username) {
@@ -354,7 +355,7 @@ class DatabaseStorage {
         return (data || []).map(mapCountrySurvey);
     }
     async getCountrySurveyByCode(projectCode, countryCode) {
-        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("country_surveys").select("*").eq("project_code", projectCode).eq("country_code", countryCode).single();
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("country_surveys").select("*").eq("project_code", projectCode).eq("country_code", countryCode).maybeSingle();
         return data ? mapCountrySurvey(data) : undefined;
     }
     async createCountrySurvey(survey) {
@@ -435,7 +436,8 @@ class DatabaseStorage {
             fraud_score: respondent.fraudScore,
             s2s_token: respondent.s2sToken,
             ip_address: respondent.ipAddress,
-            user_agent: respondent.userAgent
+            user_agent: respondent.userAgent,
+            survey_url: respondent.surveyUrl || null
         };
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").insert([
             dbRespondent
@@ -467,19 +469,28 @@ class DatabaseStorage {
         });
         return (data || []).map(mapRespondent);
     }
+    async getRespondentsByProject(projectCode) {
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").eq("project_code", projectCode).order("started_at", {
+            ascending: false
+        });
+        return (data || []).map(mapRespondent);
+    }
     // Activity Logs
     async createActivityLog(log) {
         const dbLog = {
             oi_session: log.oiSession,
             event_type: log.eventType,
-            description: log.description,
-            metadata: log.metadata
+            meta: log.meta || null
         };
+        // Include project_code if provided (tracking handler sends it)
+        if (log.projectCode) {
+            dbLog.project_code = log.projectCode;
+        }
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("activity_logs").insert([
             dbLog
         ]).select().single();
         if (!data) throw new Error("Failed to create activity log");
-        return data; // activity_logs schema usually maps well or we can add mapActivityLog if needed
+        return data;
     }
     async getActivityLogs(oiSession) {
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("activity_logs").select("*").eq("oi_session", oiSession).order("created_at", {
@@ -592,32 +603,36 @@ class DatabaseStorage {
             }));
     }
     async createSupplierAssignment(assignment) {
+        const a = assignment;
         const dbAssignment = {
-            project_code: assignment.projectCode,
-            country_code: assignment.countryCode,
-            supplier_id: assignment.supplierId,
-            status: assignment.status,
-            complete_url: assignment.completeUrl,
-            terminate_url: assignment.terminateUrl,
-            quotafull_url: assignment.quotafullUrl,
-            security_url: assignment.securityUrl
+            project_code: a.projectCode,
+            country_code: a.countryCode,
+            supplier_id: a.supplierId || null,
+            generated_link: a.generatedLink,
+            status: a.status || 'active',
+            notes: a.notes || null
         };
-        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").insert([
+        const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").insert([
             dbAssignment
         ]).select().single();
+        if (error) {
+            console.error("DB insert error for supplier_assignments:", error);
+            throw new Error(`Failed to create supplier assignment: ${error.message}`);
+        }
         if (!data) throw new Error("Failed to create supplier assignment");
         return data;
     }
     async updateSupplierAssignment(id, assignment) {
+        const a = assignment;
         const dbAssignment = {};
-        if (assignment.projectCode) dbAssignment.project_code = assignment.projectCode;
-        if (assignment.countryCode) dbAssignment.country_code = assignment.countryCode;
-        if (assignment.supplierId) dbAssignment.supplier_id = assignment.supplierId;
-        if (assignment.status) dbAssignment.status = assignment.status;
-        if (assignment.completeUrl !== undefined) dbAssignment.complete_url = assignment.completeUrl;
-        if (assignment.terminateUrl !== undefined) dbAssignment.terminate_url = assignment.terminateUrl;
-        if (assignment.quotafullUrl !== undefined) dbAssignment.quotafull_url = assignment.quotafullUrl;
-        if (assignment.securityUrl !== undefined) dbAssignment.security_url = assignment.securityUrl;
+        if (a.projectCode) dbAssignment.project_code = a.projectCode;
+        if (a.countryCode) dbAssignment.country_code = a.countryCode;
+        if (a.supplierId) dbAssignment.supplier_id = a.supplierId;
+        if (a.status) dbAssignment.status = a.status;
+        if (a.completeUrl !== undefined) dbAssignment.complete_url = a.completeUrl;
+        if (a.terminateUrl !== undefined) dbAssignment.terminate_url = a.terminateUrl;
+        if (a.quotafullUrl !== undefined) dbAssignment.quotafull_url = a.quotafullUrl;
+        if (a.securityUrl !== undefined) dbAssignment.security_url = a.securityUrl;
         const { data: updated } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").update(dbAssignment).eq("id", id).select().single();
         return updated || undefined;
     }
@@ -634,14 +649,17 @@ class DatabaseStorage {
         return data || undefined;
     }
     async createS2sConfig(config) {
+        const c = config;
         const dbConfig = {
-            project_code: config.projectCode,
-            s2s_url: config.s2sUrl,
-            token_param: config.tokenParam,
-            status_param: config.statusParam,
-            rid_param: config.ridParam,
-            additional_params: config.additionalParams
+            project_code: c.projectCode,
+            s2s_secret: c.s2sSecret,
+            require_s2s: c.requireS2S
         };
+        if (c.s2sUrl) dbConfig.s2s_url = c.s2sUrl;
+        if (c.tokenParam) dbConfig.token_param = c.tokenParam;
+        if (c.statusParam) dbConfig.status_param = c.statusParam;
+        if (c.ridParam) dbConfig.rid_param = c.ridParam;
+        if (c.additionalParams) dbConfig.additional_params = c.additionalParams;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("project_s2s_config").insert([
             dbConfig
         ]).select().single();
@@ -649,27 +667,35 @@ class DatabaseStorage {
         return data;
     }
     async updateS2sConfig(projectCode, config) {
+        const c = config;
         const dbConfig = {};
-        if (config.s2sUrl !== undefined) dbConfig.s2s_url = config.s2sUrl;
-        if (config.tokenParam !== undefined) dbConfig.token_param = config.tokenParam;
-        if (config.statusParam !== undefined) dbConfig.status_param = config.statusParam;
-        if (config.ridParam !== undefined) dbConfig.rid_param = config.ridParam;
-        if (config.additionalParams !== undefined) dbConfig.additional_params = config.additionalParams;
+        if (c.s2sUrl !== undefined) dbConfig.s2s_url = c.s2sUrl;
+        if (c.tokenParam !== undefined) dbConfig.token_param = c.tokenParam;
+        if (c.statusParam !== undefined) dbConfig.status_param = c.statusParam;
+        if (c.ridParam !== undefined) dbConfig.rid_param = c.ridParam;
+        if (c.additionalParams !== undefined) dbConfig.additional_params = c.additionalParams;
+        if (c.s2sSecret !== undefined) dbConfig.s2s_secret = c.s2sSecret;
+        if (c.requireS2S !== undefined) dbConfig.require_s2s = c.requireS2S;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("project_s2s_config").update(dbConfig).eq("project_code", projectCode).select().single();
         if (!data) throw new Error("Failed to update S2S config");
         return data;
     }
     // S2S Logs
     async createS2sLog(log) {
+        const l = log;
         const dbLog = {
-            project_code: log.projectCode,
-            oi_session: log.oiSession,
-            endpoint: log.endpoint,
-            payload: log.payload,
-            response: log.response,
-            status_code: log.statusCode,
-            success: log.success
+            project_code: l.projectCode,
+            oi_session: l.oiSession,
+            status: l.status,
+            payload: l.payload,
+            supplier_code: l.supplierCode,
+            ip_address: l.ipAddress,
+            user_agent: l.userAgent
         };
+        if (l.endpoint) dbLog.endpoint = l.endpoint;
+        if (l.response) dbLog.response = l.response;
+        if (l.statusCode) dbLog.status_code = l.statusCode;
+        if (l.success !== undefined) dbLog.success = l.success;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("s2s_logs").insert([
             dbLog
         ]).select().single();
@@ -822,40 +848,78 @@ async function handleTracking(req, projectCodeParam) {
     const country = searchParams.get("country");
     const sup = searchParams.get("sup");
     const uid = searchParams.get("uid");
-    if (!code || !country || !sup || !uid) {
-        return new Response(`Missing tracking parameters (code: ${code}, country: ${country}, sup: ${sup}, uid: ${uid})`, {
+    if (!code || !country) {
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+            error: `Missing tracking parameters (code: ${code}, country: ${country})`
+        }, {
             status: 400
         });
     }
     const projectCode = code;
     const countryCode = country;
-    const supplierCode = sup;
-    const supplierRid = uid;
+    const oiSession = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$crypto__$5b$external$5d$__$28$crypto$2c$__cjs$29$__["randomUUID"])();
+    const extraParams = {};
+    searchParams.forEach((value, key)=>{
+        if (![
+            'code',
+            'country',
+            'sup',
+            'uid'
+        ].includes(key)) {
+            extraParams[key] = value;
+        }
+    });
+    const supplierCode = sup || "DIRECT";
+    // UID Sanitization
+    let rawUid = uid;
+    const SANITY_PLACEHOLDERS = [
+        'n/a',
+        '[uid]',
+        '{uid}',
+        '[rid]',
+        '{rid}',
+        'null',
+        'undefined',
+        ''
+    ];
+    if (rawUid && SANITY_PLACEHOLDERS.includes(rawUid.toLowerCase().trim())) {
+        rawUid = ""; // treat as missing
+    }
+    const supplierRid = rawUid || `DIR-${oiSession.split('-')[0]}`;
     try {
         // 1. Validate Project and Supplier
+        console.log(`[Tracking] Querying project by code: ${projectCode}`);
         const project = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$storage$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storage"].getProjectByCode(projectCode);
         if (!project || project.status !== "active") {
             console.log(`Tracking 404: Project not found or inactive. Code: ${projectCode}`);
-            return new Response("Project not found or inactive", {
+            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: `Project not found or inactive (code: ${projectCode})`
+            }, {
                 status: 404
             });
         }
+        console.log(`[Tracking] Querying supplier by code: ${supplierCode}`);
         const supplier = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$storage$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storage"].getSupplierByCode(supplierCode);
         if (!supplier) {
             console.log(`Tracking 404: Supplier not found. Code: ${supplierCode}`);
-            return new Response("Supplier not found", {
+            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: `Supplier not found (code: ${supplierCode})`
+            }, {
                 status: 404
             });
         }
-        // 2. Validate Country Survey
+        // 3. Get Country Survey
+        console.log(`[Tracking] Looking for survey: project=${projectCode}, country=${countryCode}`);
         const countrySurvey = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$storage$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storage"].getCountrySurveyByCode(projectCode, countryCode);
-        if (!countrySurvey || countrySurvey.status !== "active") {
-            console.log(`Tracking 404: Survey not found for country. Code: ${projectCode}, Country: ${countryCode}`);
-            return new Response("Survey not found for this country", {
+        if (!countrySurvey) {
+            console.log(`[Tracking] Error: Survey not found for project=${projectCode}, country=${countryCode}`);
+            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: `Survey not found for this country (code: ${projectCode}, country: ${countryCode})`
+            }, {
                 status: 404
             });
         }
-        // 3. Check for Duplicates
+        console.log(`[Tracking] Found survey: ${countrySurvey.id}, URL: ${countrySurvey.surveyUrl}`);
         const isDuplicate = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$storage$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storage"].checkDuplicateRespondent(projectCode, supplierCode, supplierRid);
         const currentTimeUnix = Math.floor(Date.now() / 1000).toString();
         const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
@@ -884,7 +948,7 @@ async function handleTracking(req, projectCodeParam) {
         // 4. Generate Client RID (Atomic)
         const clientRid = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$storage$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storage"].generateClientRID(projectCode);
         // 5. Create Respondent Session
-        const oiSession = (0, __TURBOPACK__imported__module__$5b$externals$5d2f$crypto__$5b$external$5d$__$28$crypto$2c$__cjs$29$__["randomUUID"])();
+        // oiSession is already declared above
         // S2S Generation
         let s2sToken = null;
         const s2sConfig = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$storage$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storage"].getS2sConfig(projectCode);
@@ -914,16 +978,51 @@ async function handleTracking(req, projectCodeParam) {
                 details: `Respondent started. Redirecting to client survey.`
             }
         });
-        // 7. Redirect to Client Survey URL
-        let redirectUrl = countrySurvey.surveyUrl.replace("{RID}", clientRid).replace("{oi_session}", oiSession);
+        // 7. Redirect to Client Survey URL — inject clientRid and arbitrary params
+        let redirectUrl = countrySurvey.surveyUrl.replaceAll("{RID}", clientRid).replaceAll("[RID]", clientRid).replaceAll("{rid}", clientRid).replaceAll("{uid}", clientRid).replaceAll("[UID]", clientRid).replaceAll("{oi_session}", oiSession);
+        // Support arbitrary parameters from query string
+        const usedParams = new Set([
+            "country",
+            "sup",
+            "uid",
+            "code"
+        ]);
+        Object.entries(extraParams).forEach(([key, value])=>{
+            const keyLower = key.toLowerCase();
+            const hasPlaceholder = redirectUrl.includes(`{${key}}`) || redirectUrl.includes(`[${key}]`) || redirectUrl.includes(`{${keyLower}}`) || redirectUrl.includes(`[${keyLower}]`);
+            if (hasPlaceholder) {
+                redirectUrl = redirectUrl.replaceAll(`{${key}}`, value).replaceAll(`[${key}]`, value).replaceAll(`{${keyLower}}`, value).replaceAll(`[${keyLower}]`, value);
+                usedParams.add(key);
+            }
+        });
+        // Append unused extra params to query string
+        try {
+            const finalUrlObj = new URL(redirectUrl);
+            Object.entries(extraParams).forEach(([key, value])=>{
+                if (!usedParams.has(key)) {
+                    finalUrlObj.searchParams.set(key, value);
+                }
+            });
+            redirectUrl = finalUrlObj.toString();
+        } catch (urlErr) {
+            console.error("Malformed survey URL during append:", redirectUrl);
+        }
         if (s2sToken) {
             const separator = redirectUrl.includes("?") ? "&" : "?";
             redirectUrl += `${separator}s2s_token=${s2sToken}`;
         }
-        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].redirect(new URL(redirectUrl));
+        // Append oi_session if not already in URL (match routes.ts)
+        if (!redirectUrl.includes("oi_session=")) {
+            const separator = redirectUrl.includes("?") ? "&" : "?";
+            redirectUrl += `${separator}oi_session=${oiSession}`;
+        }
+        console.log(`Tracking: Redirecting to ${redirectUrl}`);
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].redirect(new URL(redirectUrl, req.url));
     } catch (err) {
         console.error("Tracking Error:", err);
-        return new Response("Internal Server Error during tracking", {
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+            error: "Internal Server Error during tracking"
+        }, {
             status: 500
         });
     }

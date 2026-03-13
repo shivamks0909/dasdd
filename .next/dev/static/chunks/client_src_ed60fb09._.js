@@ -165,6 +165,7 @@ function getSessionParams(search) {
     const reason = searchParams.get("reason") || "-";
     const country = searchParams.get("country") || "-";
     const status = searchParams.get("status") || "-";
+    const session = searchParams.get("session") || "-";
     const entryTime = formatTimestamp(startRaw);
     const exitTime = formatTimestamp(endRaw);
     const { loi: calcLoi, duration: calcDuration } = calculateDuration(startRaw, endRaw);
@@ -205,7 +206,8 @@ function getSessionParams(search) {
         start: entryTime,
         end: exitTime,
         loi: loiMinutes,
-        timestamp: currentTime
+        timestamp: currentTime,
+        session
     };
 }
 function useSessionParams() {

@@ -1,5 +1,6 @@
 import React from "react";
 import { useSessionParams } from "@/lib/page-params";
+import { useQuery } from "@tanstack/react-query";
 
 interface QuirkyOutcomeViewProps {
   status: string;
@@ -8,6 +9,39 @@ interface QuirkyOutcomeViewProps {
 
 export function QuirkyOutcomeView({ status, statusKeyword }: QuirkyOutcomeViewProps) {
   const params = useSessionParams();
+  
+  // Fetch respondent stats from API
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['respondent-stats', params.session],
+    queryFn: async () => {
+      if (!params.session || params.session === '-') return null;
+      const res = await fetch(`/api/respondent-stats/${params.session}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!params.session && params.session !== '-',
+  });
+
+  // Sanitize values
+  const sanitize = (val: string | null | undefined) => {
+    if (!val) return '-';
+    const placeholders = ['n/a', '[uid]', '{uid}', '[rid]', '{rid}', 'null', 'undefined', '-'];
+    if (placeholders.includes(val.toLowerCase().trim())) return '-';
+    return val;
+  };
+
+  // Use API data if available, otherwise fallback to URL params
+  const displayUid = sanitize(stats?.supplierRid || params.uid);
+  const displayPid = sanitize(stats?.projectCode || params.pid);
+  const displayIp = stats?.ip || params.ip || '-';
+  const displayLoi = stats?.loi !== undefined ? `${stats.loi} mins` : (params.loi || '-');
+  
+  // Format date if it comes from API
+  let displayDate = params.timestamp || '-';
+  if (stats?.endTime) {
+    const d = new Date(stats.endTime * 1000);
+    displayDate = d.toLocaleString();
+  }
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#fff", color: "#000", fontFamily: '"Muli", sans-serif' }}>
@@ -91,12 +125,12 @@ export function QuirkyOutcomeView({ status, statusKeyword }: QuirkyOutcomeViewPr
                     <th>Date</th>
                   </tr>
                   <tr>
-                    <td>{params.uid || '-'}</td>
-                    <td>{params.pid || '-'}</td>
+                    <td>{isLoading ? 'Loading...' : displayUid}</td>
+                    <td>{isLoading ? 'Loading...' : displayPid}</td>
                     <td>{status}</td>
-                    <td>{params.ip || '-'}</td>
-                    <td>{params.loi || '-'}</td>
-                    <td>{params.timestamp || '-'}</td>
+                    <td>{isLoading ? 'Loading...' : displayIp}</td>
+                    <td>{isLoading ? 'Loading...' : displayLoi}</td>
+                    <td>{isLoading ? 'Loading...' : displayDate}</td>
                   </tr>
                 </tbody>
               </table>

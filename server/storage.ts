@@ -51,6 +51,7 @@ export interface IStorage {
   updateRespondentStatus(oiSession: string, status: string): Promise<Respondent | undefined>;
   checkDuplicateRespondent(projectCode: string, supplierCode: string, supplierRid: string): Promise<boolean>;
   getRespondents(): Promise<Respondent[]>;
+  getRespondentsByProject(projectCode: string): Promise<Respondent[]>;
 
   // Activity Logs
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
@@ -198,7 +199,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProjectByCode(projectCode: string): Promise<Project | undefined> {
-    const { data } = await insforge.database.from("projects").select("*").eq("project_code", projectCode).single();
+    const { data } = await insforge.database.from("projects").select("*").eq("project_code", projectCode).maybeSingle();
     return data ? mapProject(data) : undefined;
   }
 
@@ -267,7 +268,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCountrySurveyByCode(projectCode: string, countryCode: string): Promise<CountrySurvey | undefined> {
-    const { data } = await insforge.database.from("country_surveys").select("*").eq("project_code", projectCode).eq("country_code", countryCode).single();
+    const { data } = await insforge.database.from("country_surveys").select("*").eq("project_code", projectCode).eq("country_code", countryCode).maybeSingle();
     return data ? mapCountrySurvey(data) : undefined;
   }
 
@@ -304,7 +305,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSupplierByCode(code: string): Promise<Supplier | undefined> {
-    const { data } = await insforge.database.from("suppliers").select("*").eq("code", code).single();
+    const { data } = await insforge.database.from("suppliers").select("*").eq("code", code).maybeSingle();
     return data ? mapSupplier(data) : undefined;
   }
 
@@ -362,7 +363,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRespondentBySession(oiSession: string): Promise<Respondent | undefined> {
-    const { data } = await insforge.database.from("respondents").select("*").eq("oi_session", oiSession).single();
+    const { data } = await insforge.database.from("respondents").select("*").eq("oi_session", oiSession).maybeSingle();
     return data ? mapRespondent(data) : undefined;
   }
 
@@ -386,6 +387,14 @@ export class DatabaseStorage implements IStorage {
 
   async getRespondents(): Promise<Respondent[]> {
     const { data } = await insforge.database.from("respondents").select("*").order("started_at", { ascending: false });
+    return (data || []).map(mapRespondent);
+  }
+
+  async getRespondentsByProject(projectCode: string): Promise<Respondent[]> {
+    const { data } = await insforge.database.from("respondents")
+      .select("*")
+      .eq("project_code", projectCode)
+      .order("started_at", { ascending: false });
     return (data || []).map(mapRespondent);
   }
 

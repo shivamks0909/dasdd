@@ -11,42 +11,67 @@ export async function handleTracking(req: NextRequest, projectCodeParam?: string
   const uid = searchParams.get("uid");
 
   if (!code || !country) {
-    return new Response(`Missing tracking parameters (code: ${code}, country: ${country})`, { status: 400 });
+    return NextResponse.json(
+      { error: `Missing tracking parameters (code: ${code}, country: ${country})` },
+      { status: 400 }
+    );
   }
 
   const projectCode = code;
   const countryCode = country;
   const oiSession = randomUUID();
 
+  const extraParams: Record<string, string> = {};
+  searchParams.forEach((value, key) => {
+    if (!['code', 'country', 'sup', 'uid'].includes(key)) {
+      extraParams[key] = value;
+    }
+  });
+
   const supplierCode = sup || "DIRECT";
-  const supplierRid = uid || `DIR-${oiSession.split('-')[0]}`;
+  
+  // UID Sanitization
+  let rawUid = uid;
+  const SANITY_PLACEHOLDERS = ['n/a', '[uid]', '{uid}', '[rid]', '{rid}', 'null', 'undefined', ''];
+  if (rawUid && SANITY_PLACEHOLDERS.includes(rawUid.toLowerCase().trim())) {
+    rawUid = ""; // treat as missing
+  }
+  const supplierRid = rawUid || `DIR-${oiSession.split('-')[0]}`;
 
   try {
-    // 1. Validate Project
+    // 1. Validate Project and Supplier
+    console.log(`[Tracking] Querying project by code: ${projectCode}`);
     const project = await storage.getProjectByCode(projectCode);
     if (!project || project.status !== "active") {
       console.log(`Tracking 404: Project not found or inactive. Code: ${projectCode}`);
-      return new Response("Project not found or inactive", { status: 404 });
+      return NextResponse.json(
+        { error: `Project not found or inactive (code: ${projectCode})` },
+        { status: 404 }
+      );
     }
 
-    // Validate Supplier only if provided
-    if (sup) {
-      const supplier = await storage.getSupplierByCode(supplierCode);
-      if (!supplier) {
-        console.log(`Tracking 404: Supplier not found. Code: ${supplierCode}`);
-        return new Response("Supplier not found", { status: 404 });
-      }
+    console.log(`[Tracking] Querying supplier by code: ${supplierCode}`);
+    const supplier = await storage.getSupplierByCode(supplierCode);
+    if (!supplier) {
+      console.log(`Tracking 404: Supplier not found. Code: ${supplierCode}`);
+      return NextResponse.json(
+        { error: `Supplier not found (code: ${supplierCode})` },
+        { status: 404 }
+      );
     }
 
-
-    // 2. Validate Country Survey
+    // 3. Get Country Survey
+    console.log(`[Tracking] Looking for survey: project=${projectCode}, country=${countryCode}`);
     const countrySurvey = await storage.getCountrySurveyByCode(projectCode, countryCode);
-    if (!countrySurvey || countrySurvey.status !== "active") {
-      console.log(`Tracking 404: Survey not found for country. Code: ${projectCode}, Country: ${countryCode}`);
-      return new Response("Survey not found for this country", { status: 404 });
+    
+    if (!countrySurvey) {
+      console.log(`[Tracking] Error: Survey not found for project=${projectCode}, country=${countryCode}`);
+      return NextResponse.json(
+        { error: `Survey not found for this country (code: ${projectCode}, country: ${countryCode})` },
+        { status: 404 }
+      );
     }
-
-    // 3. Check for Duplicates
+    console.log(`[Tracking] Found survey: ${countrySurvey.id}, URL: ${countrySurvey.surveyUrl}`);
     const isDuplicate = await storage.checkDuplicateRespondent(projectCode, supplierCode, supplierRid);
     const currentTimeUnix = Math.floor(Date.now() / 1000).toString();
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
@@ -111,7 +136,7 @@ export async function handleTracking(req: NextRequest, projectCodeParam?: string
       meta: { details: `Respondent started. Redirecting to client survey.` }
     });
 
-    // 7. Redirect to Client Survey URL — use same replacements as server/routes.ts
+    // 7. Redirect to Client Survey URL — inject clientRid and arbitrary params
     let redirectUrl = countrySurvey.surveyUrl
       .replaceAll("{RID}", clientRid)
       .replaceAll("[RID]", clientRid)
@@ -119,6 +144,39 @@ export async function handleTracking(req: NextRequest, projectCodeParam?: string
       .replaceAll("{uid}", clientRid)
       .replaceAll("[UID]", clientRid)
       .replaceAll("{oi_session}", oiSession);
+
+    // Support arbitrary parameters from query string
+    const usedParams = new Set<string>(["country", "sup", "uid", "code"]);
+    Object.entries(extraParams).forEach(([key, value]) => {
+      const keyLower = key.toLowerCase();
+      const hasPlaceholder = 
+        redirectUrl.includes(`{${key}}`) || 
+        redirectUrl.includes(`[${key}]`) ||
+        redirectUrl.includes(`{${keyLower}}`) ||
+        redirectUrl.includes(`[${keyLower}]`);
+      
+      if (hasPlaceholder) {
+        redirectUrl = redirectUrl
+          .replaceAll(`{${key}}`, value)
+          .replaceAll(`[${key}]`, value)
+          .replaceAll(`{${keyLower}}`, value)
+          .replaceAll(`[${keyLower}]`, value);
+        usedParams.add(key);
+      }
+    });
+
+    // Append unused extra params to query string
+    try {
+      const finalUrlObj = new URL(redirectUrl);
+      Object.entries(extraParams).forEach(([key, value]) => {
+        if (!usedParams.has(key)) {
+          finalUrlObj.searchParams.set(key, value);
+        }
+      });
+      redirectUrl = finalUrlObj.toString();
+    } catch (urlErr) {
+      console.error("Malformed survey URL during append:", redirectUrl);
+    }
 
     if (s2sToken) {
       const separator = redirectUrl.includes("?") ? "&" : "?";
@@ -136,6 +194,9 @@ export async function handleTracking(req: NextRequest, projectCodeParam?: string
 
   } catch (err: any) {
     console.error("Tracking Error:", err);
-    return new Response("Internal Server Error during tracking", { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error during tracking" },
+      { status: 500 }
+    );
   }
 }

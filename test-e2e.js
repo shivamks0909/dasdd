@@ -10,7 +10,7 @@ async function test() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: 'admin', password: 'admin123' })
   });
-  
+  console.log('   Status:', loginRes.status);
   const loginData = await loginRes.json();
   if (!loginRes.ok) throw new Error('Login failed: ' + JSON.stringify(loginData));
   console.log('   Success! Token received.');
@@ -76,8 +76,10 @@ async function test() {
   const redirectLocation = trackRes.headers.get('location');
   console.log('   Redirect Location:', redirectLocation);
 
-  if (trackRes.status !== 302 || !redirectLocation) {
-    throw new Error('Tracking failed: Expected 302 redirect.');
+  if (![302, 307, 308].includes(trackRes.status) || !redirectLocation) {
+    const body = await trackRes.text();
+    console.error('   Error Body:', body);
+    throw new Error(`Tracking failed: Expected redirect (302/307/308), got ${trackRes.status}`);
   }
 
   const redirectUrl = new URL(redirectLocation);
@@ -96,8 +98,10 @@ async function test() {
   const finalLocation = callbackRes.headers.get('location');
   console.log('   Final Landing Page:', finalLocation);
 
-  if (callbackRes.status !== 302 || !finalLocation?.includes('/pages/complete')) {
-    throw new Error('Callback failed: Expected redirect to /pages/complete.');
+  if (![302, 307, 308].includes(callbackRes.status) || !finalLocation?.includes('/pages/complete')) {
+    const body = await callbackRes.text();
+    console.error('   Error Body:', body);
+    throw new Error(`Callback failed: Expected redirect (302/307/308) to /pages/complete, got ${callbackRes.status} and location ${finalLocation}`);
   }
 
   console.log('--- E2E Flow SUCCESS ---');

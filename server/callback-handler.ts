@@ -49,36 +49,7 @@ export async function handleCallback(req: Request, status: string) {
   const endTime = Math.floor(Date.now() / 1000);
   const loi = Math.round((endTime - startTime) / 60);
 
-  // ── BUG 2 FIX: Try to redirect to supplier URL first ──
-  if (respondent.supplierCode) {
-    try {
-      const supplier = await storage.getSupplierByCode(respondent.supplierCode);
-      if (supplier) {
-        const urlMap: Record<string, string | null | undefined> = {
-          'complete':           supplier.completeUrl ?? null,
-          'terminate':          supplier.terminateUrl ?? null,
-          'quotafull':          (supplier as any).quotafullUrl ?? null,
-          'security-terminate': (supplier as any).security_url ?? null,
-        };
-        const rawUrl = urlMap[finalStatus];
-        if (rawUrl) {
-          const supplierRedirect = rawUrl
-            .replace('{uid}', respondent.supplierRid || '')
-            .replace('[UID]', respondent.supplierRid || '')
-            .replace('{UID}', respondent.supplierRid || '')
-            .replace('{pid}', respondent.projectCode || '')
-            .replace('[PID]', respondent.projectCode || '')
-            .replace('{PID}', respondent.projectCode || '');
-          return NextResponse.redirect(new URL(supplierRedirect));
-        }
-      }
-    } catch (err) {
-      console.error("Supplier URL redirect error:", err);
-      // Fall through to internal landing page
-    }
-  }
-
-  // ── Fallback: Internal landing page with original supplier UID ──
+  // 5. Build Internal Parameters (Fallback)
   const pageMap: Record<string, string> = {
     'complete':           'complete',
     'terminate':          'terminate',
@@ -89,7 +60,7 @@ export async function handleCallback(req: Request, status: string) {
 
   const internalParams = new URLSearchParams({
     pid: respondent.projectCode || "",
-    uid: respondent.supplierRid || "",   // ← Original supplier UID always
+    uid: respondent.supplierRid || "",
     ip: respondent.ipAddress || "unknown",
     start: startTime.toString(),
     end: endTime.toString(),
@@ -98,6 +69,71 @@ export async function handleCallback(req: Request, status: string) {
     country: respondent.countryCode || ""
   });
 
-  const pagePath = pageMap[finalStatus] || 'terminate';
-  return NextResponse.redirect(new URL(`/pages/${pagePath}?${internalParams.toString()}`, req.url));
+  // 6. UID Sanitization for Redirects (Safety check for legacy data)
+  let rid = respondent.supplierRid || '';
+  const SANITY_PLACEHOLDERS = ['n/a', '[uid]', '{uid}', '[rid]', '{rid}', 'null', 'undefined', ''];
+  if (rid && SANITY_PLACEHOLDERS.includes(rid.toLowerCase().trim())) {
+    rid = `DIR-${respondent.oiSession.split('-')[0]}`;
+  }
+
+  // 7. Determine Final Destination (Supplier Redirect vs Project Redirect vs Landing Page)
+  let finalPath = `/pages/${pageMap[finalStatus] || 'terminate'}`;
+  let finalRedirectUrl = new URL(`${finalPath}?${internalParams.toString()}`, req.url).toString();
+
+  // A. Try Supplier Redirect first
+  if (respondent.supplierCode && respondent.supplierCode !== 'direct') {
+    try {
+      const supplier = await storage.getSupplierByCode(respondent.supplierCode);
+      if (supplier) {
+        const urlMap: Record<string, string | null | undefined> = {
+          'complete':           supplier.completeUrl ?? null,
+          'terminate':          supplier.terminateUrl ?? null,
+          'quotafull':          (supplier as any).quotafullUrl ?? null,
+          'security-terminate': (supplier as any).securityUrl ?? null,
+        };
+        if (urlMap[finalStatus]) {
+          finalRedirectUrl = urlMap[finalStatus]!;
+        }
+      }
+    } catch (err) {
+      console.error("Supplier URL lookup error:", err);
+    }
+  } 
+  // B. Fallback to Project Redirect
+  else {
+    try {
+      const project = await storage.getProjectByCode(respondent.projectCode);
+      if (project) {
+        const urlMap: Record<string, string | null | undefined> = {
+          'complete':           project.completeUrl ?? null,
+          'terminate':          project.terminateUrl ?? null,
+          'quotafull':          project.quotafullUrl ?? null,
+          'security-terminate': project.securityUrl ?? null,
+        };
+        if (urlMap[finalStatus]) {
+          finalRedirectUrl = urlMap[finalStatus]!;
+        }
+      }
+    } catch (err) {
+      console.error("Project URL lookup error:", err);
+    }
+  }
+
+  // 8. Replace Placeholders in Final URL
+  if (finalRedirectUrl.includes('{') || finalRedirectUrl.includes('[')) {
+    const pidValue = respondent.projectCode || '';
+    finalRedirectUrl = finalRedirectUrl
+      .replaceAll("{RID}", rid)
+      .replaceAll("[RID]", rid)
+      .replaceAll("{rid}", rid)
+      .replaceAll("{uid}", rid)
+      .replaceAll("[UID]", rid)
+      .replaceAll("{PID}", pidValue)
+      .replaceAll("[PID]", pidValue)
+      .replaceAll("{pid}", pidValue)
+      .replaceAll("{oi_session}", respondent.oiSession);
+  }
+
+  console.log(`Callback Redirect: ${finalRedirectUrl}`);
+  return NextResponse.redirect(new URL(finalRedirectUrl));
 }

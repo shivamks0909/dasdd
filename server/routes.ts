@@ -402,7 +402,7 @@ export async function registerRoutes(
   // OR https://router.domain.com/t/{PROJECT_CODE}?country={CC}&sup={SUP_CODE}&uid={SUP_RID}
   // sup and uid are OPTIONAL — links work with or without a supplier
   const handleTrackingRequest = async (req: Request, res: Response, codeFromPath?: string) => {
-    const { code, country, sup, uid } = req.query;
+    const { code, country, sup, uid, ...extraParams } = req.query;
     const projectCode = (codeFromPath || code) as string;
     const countryCode = country as string;
 
@@ -411,8 +411,15 @@ export async function registerRoutes(
       return res.status(400).send(`Missing tracking parameters. Need: code, country. Got: code=${projectCode}, country=${countryCode}`);
     }
 
-    const supplierCode = (sup as string) || "DIRECT";  // default to 'DIRECT' if no supplier
-    const supplierRid = (uid as string) || `DIR-${randomUUID().split('-')[0]}`; // generated UID if none provided
+    const supplierCode = (sup as string) || "DIRECT";  
+    
+    // UID Sanitization
+    let rawUid = uid as string;
+    const SANITY_PLACEHOLDERS = ['n/a', '[uid]', '{uid}', '[rid]', '{rid}', 'null', 'undefined', ''];
+    if (rawUid && SANITY_PLACEHOLDERS.includes(rawUid.toLowerCase().trim())) {
+      rawUid = ""; // treat as missing
+    }
+    const supplierRid = rawUid || `DIR-${randomUUID().split('-')[0]}`; // generated UID if none provided
 
     try {
       // 1. Validate Project
@@ -479,7 +486,7 @@ export async function registerRoutes(
         s2sToken = generateS2SToken(oiSession, s2sConfig.s2sSecret);
       }
 
-      // 7. Build survey URL — inject clientRid using multiple placeholder formats
+      // 7. Build survey URL — inject clientRid and arbitrary params
       let redirectUrl = countrySurvey.surveyUrl
         .replaceAll("{RID}", clientRid)
         .replaceAll("[RID]", clientRid)
@@ -487,6 +494,37 @@ export async function registerRoutes(
         .replaceAll("{uid}", clientRid)
         .replaceAll("[UID]", clientRid)
         .replaceAll("{oi_session}", oiSession);
+
+      // Support arbitrary parameters from query string
+      const usedParams = new Set<string>();
+      Object.entries(extraParams).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          const keyLower = key.toLowerCase();
+          const hasPlaceholder = 
+            redirectUrl.includes(`{${key}}`) || 
+            redirectUrl.includes(`[${key}]`) ||
+            redirectUrl.includes(`{${keyLower}}`) ||
+            redirectUrl.includes(`[${keyLower}]`);
+          
+          if (hasPlaceholder) {
+            redirectUrl = redirectUrl
+              .replaceAll(`{${key}}`, value)
+              .replaceAll(`[${key}]`, value)
+              .replaceAll(`{${keyLower}}`, value)
+              .replaceAll(`[${keyLower}]`, value);
+            usedParams.add(key);
+          }
+        }
+      });
+
+      // Append unused extra params to query string
+      const finalUrlObj = new URL(redirectUrl);
+      Object.entries(extraParams).forEach(([key, value]) => {
+        if (!usedParams.has(key) && typeof value === 'string') {
+          finalUrlObj.searchParams.set(key, value);
+        }
+      });
+      redirectUrl = finalUrlObj.toString();
 
       if (s2sToken) {
         const separator = redirectUrl.includes('?') ? '&' : '?';
@@ -606,10 +644,10 @@ export async function registerRoutes(
       session: respondent.oiSession
     });
 
-    // 7. Determine Final Destination (Supplier Redirect vs Landing Page)
+    // 7. Determine Final Destination (Supplier Redirect vs Project Redirect vs Landing Page)
     let finalRedirectUrl = `${internalPath}?${redirectParams.toString()}`;
 
-    // If it's a supplier respondent, try to find their specific redirect URL
+    // A. Try Supplier Redirect first if applicable
     if (respondent.supplierCode && respondent.supplierCode !== 'direct') {
       const supplier = await storage.getSupplierByCode(respondent.supplierCode);
       if (supplier) {
@@ -620,17 +658,46 @@ export async function registerRoutes(
         else if (finalStatus === 'security-terminate' || finalStatus === 'fraud') supRedirect = supplier.securityUrl ?? null;
 
         if (supRedirect && supRedirect.trim() !== '') {
-          // Replace {RID} or [RID] with the ORIGINAL supplier UID
-          finalRedirectUrl = supRedirect
-            .replace("{RID}", respondent.supplierRid)
-            .replace("[RID]", respondent.supplierRid)
-            .replace("{rid}", respondent.supplierRid)
-            .replace("{uid}", respondent.supplierRid)
-            .replace("[UID]", respondent.supplierRid);
-          
-          console.log(`Callback: Redirecting to supplier URL: ${finalRedirectUrl}`);
+          finalRedirectUrl = supRedirect;
         }
       }
+    } 
+    // B. Fallback to Project Redirect if it's a direct respondent or no supplier redirect found
+    else {
+      const project = await storage.getProjectByCode(respondent.projectCode);
+      if (project) {
+        let projRedirect: string | null = null;
+        if (finalStatus === 'complete') projRedirect = project.completeUrl ?? null;
+        else if (finalStatus === 'terminate') projRedirect = project.terminateUrl ?? null;
+        else if (finalStatus === 'quotafull') projRedirect = project.quotafullUrl ?? null;
+        else if (finalStatus === 'security-terminate' || finalStatus === 'fraud') projRedirect = project.securityUrl ?? null;
+
+        if (projRedirect && projRedirect.trim() !== '') {
+          finalRedirectUrl = projRedirect;
+        }
+      }
+    }
+
+    // 7.5. Runtime UID Sanitization (Safety check for legacy data)
+    let sanitizedRid = respondent.supplierRid || "";
+    const SANITY_PLACEHOLDERS = ['n/a', '[uid]', '{uid}', '[rid]', '{rid}', 'null', 'undefined', ''];
+    if (sanitizedRid && SANITY_PLACEHOLDERS.includes(sanitizedRid.toLowerCase().trim())) {
+      sanitizedRid = `DIR-${respondent.oiSession.split('-')[0]}`;
+    }
+
+    // 8. Replace Placeholders in Final URL
+    if (finalRedirectUrl.includes('{') || finalRedirectUrl.includes('[')) {
+      finalRedirectUrl = finalRedirectUrl
+        .replaceAll("{RID}", sanitizedRid)
+        .replaceAll("[RID}", sanitizedRid) // Fixing a potential bracket typo if I saw one, but usually it's [RID]
+        .replaceAll("[RID]", sanitizedRid)
+        .replaceAll("{rid}", sanitizedRid)
+        .replaceAll("{uid}", sanitizedRid)
+        .replaceAll("[UID]", sanitizedRid)
+        .replaceAll("{PID}", respondent.projectCode)
+        .replaceAll("[PID]", respondent.projectCode)
+        .replaceAll("{pid}", respondent.projectCode)
+        .replaceAll("{oi_session}", respondent.oiSession);
     }
 
     return res.redirect(finalRedirectUrl);

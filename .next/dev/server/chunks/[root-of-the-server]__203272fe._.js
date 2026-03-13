@@ -252,7 +252,8 @@ const mapRespondent = (data)=>({
         startedAt: data.started_at ? new Date(data.started_at) : undefined,
         completedAt: data.completed_at ? new Date(data.completed_at) : undefined,
         ipAddress: data.ip_address,
-        userAgent: data.user_agent
+        userAgent: data.user_agent,
+        surveyUrl: data.survey_url
     });
 class DatabaseStorage {
     async getAdminByUsername(username) {
@@ -354,7 +355,7 @@ class DatabaseStorage {
         return (data || []).map(mapCountrySurvey);
     }
     async getCountrySurveyByCode(projectCode, countryCode) {
-        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("country_surveys").select("*").eq("project_code", projectCode).eq("country_code", countryCode).single();
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("country_surveys").select("*").eq("project_code", projectCode).eq("country_code", countryCode).maybeSingle();
         return data ? mapCountrySurvey(data) : undefined;
     }
     async createCountrySurvey(survey) {
@@ -435,7 +436,8 @@ class DatabaseStorage {
             fraud_score: respondent.fraudScore,
             s2s_token: respondent.s2sToken,
             ip_address: respondent.ipAddress,
-            user_agent: respondent.userAgent
+            user_agent: respondent.userAgent,
+            survey_url: respondent.surveyUrl || null
         };
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").insert([
             dbRespondent
@@ -463,6 +465,12 @@ class DatabaseStorage {
     }
     async getRespondents() {
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").order("started_at", {
+            ascending: false
+        });
+        return (data || []).map(mapRespondent);
+    }
+    async getRespondentsByProject(projectCode) {
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").eq("project_code", projectCode).order("started_at", {
             ascending: false
         });
         return (data || []).map(mapRespondent);
@@ -595,32 +603,36 @@ class DatabaseStorage {
             }));
     }
     async createSupplierAssignment(assignment) {
+        const a = assignment;
         const dbAssignment = {
-            project_code: assignment.projectCode,
-            country_code: assignment.countryCode,
-            supplier_id: assignment.supplierId,
-            status: assignment.status,
-            complete_url: assignment.completeUrl,
-            terminate_url: assignment.terminateUrl,
-            quotafull_url: assignment.quotafullUrl,
-            security_url: assignment.securityUrl
+            project_code: a.projectCode,
+            country_code: a.countryCode,
+            supplier_id: a.supplierId || null,
+            generated_link: a.generatedLink,
+            status: a.status || 'active',
+            notes: a.notes || null
         };
-        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").insert([
+        const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").insert([
             dbAssignment
         ]).select().single();
+        if (error) {
+            console.error("DB insert error for supplier_assignments:", error);
+            throw new Error(`Failed to create supplier assignment: ${error.message}`);
+        }
         if (!data) throw new Error("Failed to create supplier assignment");
         return data;
     }
     async updateSupplierAssignment(id, assignment) {
+        const a = assignment;
         const dbAssignment = {};
-        if (assignment.projectCode) dbAssignment.project_code = assignment.projectCode;
-        if (assignment.countryCode) dbAssignment.country_code = assignment.countryCode;
-        if (assignment.supplierId) dbAssignment.supplier_id = assignment.supplierId;
-        if (assignment.status) dbAssignment.status = assignment.status;
-        if (assignment.completeUrl !== undefined) dbAssignment.complete_url = assignment.completeUrl;
-        if (assignment.terminateUrl !== undefined) dbAssignment.terminate_url = assignment.terminateUrl;
-        if (assignment.quotafullUrl !== undefined) dbAssignment.quotafull_url = assignment.quotafullUrl;
-        if (assignment.securityUrl !== undefined) dbAssignment.security_url = assignment.securityUrl;
+        if (a.projectCode) dbAssignment.project_code = a.projectCode;
+        if (a.countryCode) dbAssignment.country_code = a.countryCode;
+        if (a.supplierId) dbAssignment.supplier_id = a.supplierId;
+        if (a.status) dbAssignment.status = a.status;
+        if (a.completeUrl !== undefined) dbAssignment.complete_url = a.completeUrl;
+        if (a.terminateUrl !== undefined) dbAssignment.terminate_url = a.terminateUrl;
+        if (a.quotafullUrl !== undefined) dbAssignment.quotafull_url = a.quotafullUrl;
+        if (a.securityUrl !== undefined) dbAssignment.security_url = a.securityUrl;
         const { data: updated } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_assignments").update(dbAssignment).eq("id", id).select().single();
         return updated || undefined;
     }
@@ -637,14 +649,17 @@ class DatabaseStorage {
         return data || undefined;
     }
     async createS2sConfig(config) {
+        const c = config;
         const dbConfig = {
-            project_code: config.projectCode,
-            s2s_url: config.s2sUrl,
-            token_param: config.tokenParam,
-            status_param: config.statusParam,
-            rid_param: config.ridParam,
-            additional_params: config.additionalParams
+            project_code: c.projectCode,
+            s2s_secret: c.s2sSecret,
+            require_s2s: c.requireS2S
         };
+        if (c.s2sUrl) dbConfig.s2s_url = c.s2sUrl;
+        if (c.tokenParam) dbConfig.token_param = c.tokenParam;
+        if (c.statusParam) dbConfig.status_param = c.statusParam;
+        if (c.ridParam) dbConfig.rid_param = c.ridParam;
+        if (c.additionalParams) dbConfig.additional_params = c.additionalParams;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("project_s2s_config").insert([
             dbConfig
         ]).select().single();
@@ -652,27 +667,35 @@ class DatabaseStorage {
         return data;
     }
     async updateS2sConfig(projectCode, config) {
+        const c = config;
         const dbConfig = {};
-        if (config.s2sUrl !== undefined) dbConfig.s2s_url = config.s2sUrl;
-        if (config.tokenParam !== undefined) dbConfig.token_param = config.tokenParam;
-        if (config.statusParam !== undefined) dbConfig.status_param = config.statusParam;
-        if (config.ridParam !== undefined) dbConfig.rid_param = config.ridParam;
-        if (config.additionalParams !== undefined) dbConfig.additional_params = config.additionalParams;
+        if (c.s2sUrl !== undefined) dbConfig.s2s_url = c.s2sUrl;
+        if (c.tokenParam !== undefined) dbConfig.token_param = c.tokenParam;
+        if (c.statusParam !== undefined) dbConfig.status_param = c.statusParam;
+        if (c.ridParam !== undefined) dbConfig.rid_param = c.ridParam;
+        if (c.additionalParams !== undefined) dbConfig.additional_params = c.additionalParams;
+        if (c.s2sSecret !== undefined) dbConfig.s2s_secret = c.s2sSecret;
+        if (c.requireS2S !== undefined) dbConfig.require_s2s = c.requireS2S;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("project_s2s_config").update(dbConfig).eq("project_code", projectCode).select().single();
         if (!data) throw new Error("Failed to update S2S config");
         return data;
     }
     // S2S Logs
     async createS2sLog(log) {
+        const l = log;
         const dbLog = {
-            project_code: log.projectCode,
-            oi_session: log.oiSession,
-            endpoint: log.endpoint,
-            payload: log.payload,
-            response: log.response,
-            status_code: log.statusCode,
-            success: log.success
+            project_code: l.projectCode,
+            oi_session: l.oiSession,
+            status: l.status,
+            payload: l.payload,
+            supplier_code: l.supplierCode,
+            ip_address: l.ipAddress,
+            user_agent: l.userAgent
         };
+        if (l.endpoint) dbLog.endpoint = l.endpoint;
+        if (l.response) dbLog.response = l.response;
+        if (l.statusCode) dbLog.status_code = l.statusCode;
+        if (l.success !== undefined) dbLog.success = l.success;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("s2s_logs").insert([
             dbLog
         ]).select().single();
@@ -798,16 +821,11 @@ async function handleCallback(req, status) {
             status: 404
         });
     }
-    if (respondent.status !== 'started' && respondent.status !== 'pending') {
-    // In some cases, we might allow multiple callbacks, but usually, it's one-way.
-    // For now, let's just let it pass if it's the same status, or log a warning.
-    }
     let finalStatus = status;
     // S2S Verification Check for completions
     if (status === 'complete') {
         const s2sConfig = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$storage$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storage"].getS2sConfig(respondent.projectCode || "");
         if (s2sConfig && s2sConfig.requireS2S && !respondent.s2sVerified) {
-            // Fraud detected! Mark as security-terminate
             finalStatus = 'security-terminate';
             await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$storage$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storage"].createActivityLog({
                 oiSession: respondent.oiSession,
@@ -817,7 +835,6 @@ async function handleCallback(req, status) {
                     details: `Fraud attempt blocked: Manual client complete without S2S verification.`
                 }
             });
-            // We don't update respondent status to complete here, it stays 'started' or becomes 'fraud'
             await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$storage$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storage"].updateRespondentStatus(respondent.oiSession, 'fraud');
         }
     }
@@ -838,7 +855,14 @@ async function handleCallback(req, status) {
     const startTime = respondent.startedAt ? Math.floor(new Date(respondent.startedAt).getTime() / 1000) : Math.floor(Date.now() / 1000);
     const endTime = Math.floor(Date.now() / 1000);
     const loi = Math.round((endTime - startTime) / 60);
-    // Construct params for internal landing page
+    // 5. Build Internal Parameters (Fallback)
+    const pageMap = {
+        'complete': 'complete',
+        'terminate': 'terminate',
+        'quotafull': 'quotafull',
+        'security-terminate': 'security',
+        'fraud': 'security'
+    };
     const internalParams = new URLSearchParams({
         pid: respondent.projectCode || "",
         uid: respondent.supplierRid || "",
@@ -849,13 +873,67 @@ async function handleCallback(req, status) {
         status: finalStatus,
         country: respondent.countryCode || ""
     });
-    // Map status to paths
-    let internalPath = "/pages/terminate";
-    if (finalStatus === 'complete') internalPath = "/pages/complete";
-    if (finalStatus === 'quotafull') internalPath = "/pages/quotafull";
-    if (finalStatus === 'security-terminate' || finalStatus === 'fraud') internalPath = "/pages/security";
-    // Redirect to the display page
-    return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].redirect(new URL(`${internalPath}?${internalParams.toString()}`, req.url));
+    // 6. UID Sanitization for Redirects (Safety check for legacy data)
+    let rid = respondent.supplierRid || '';
+    const SANITY_PLACEHOLDERS = [
+        'n/a',
+        '[uid]',
+        '{uid}',
+        '[rid]',
+        '{rid}',
+        'null',
+        'undefined',
+        ''
+    ];
+    if (rid && SANITY_PLACEHOLDERS.includes(rid.toLowerCase().trim())) {
+        rid = `DIR-${respondent.oiSession.split('-')[0]}`;
+    }
+    // 7. Determine Final Destination (Supplier Redirect vs Project Redirect vs Landing Page)
+    let finalPath = `/pages/${pageMap[finalStatus] || 'terminate'}`;
+    let finalRedirectUrl = new URL(`${finalPath}?${internalParams.toString()}`, req.url).toString();
+    // A. Try Supplier Redirect first
+    if (respondent.supplierCode && respondent.supplierCode !== 'direct') {
+        try {
+            const supplier = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$storage$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storage"].getSupplierByCode(respondent.supplierCode);
+            if (supplier) {
+                const urlMap = {
+                    'complete': supplier.completeUrl ?? null,
+                    'terminate': supplier.terminateUrl ?? null,
+                    'quotafull': supplier.quotafullUrl ?? null,
+                    'security-terminate': supplier.securityUrl ?? null
+                };
+                if (urlMap[finalStatus]) {
+                    finalRedirectUrl = urlMap[finalStatus];
+                }
+            }
+        } catch (err) {
+            console.error("Supplier URL lookup error:", err);
+        }
+    } else {
+        try {
+            const project = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$storage$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["storage"].getProjectByCode(respondent.projectCode);
+            if (project) {
+                const urlMap = {
+                    'complete': project.completeUrl ?? null,
+                    'terminate': project.terminateUrl ?? null,
+                    'quotafull': project.quotafullUrl ?? null,
+                    'security-terminate': project.securityUrl ?? null
+                };
+                if (urlMap[finalStatus]) {
+                    finalRedirectUrl = urlMap[finalStatus];
+                }
+            }
+        } catch (err) {
+            console.error("Project URL lookup error:", err);
+        }
+    }
+    // 8. Replace Placeholders in Final URL
+    if (finalRedirectUrl.includes('{') || finalRedirectUrl.includes('[')) {
+        const pidValue = respondent.projectCode || '';
+        finalRedirectUrl = finalRedirectUrl.replaceAll("{RID}", rid).replaceAll("[RID]", rid).replaceAll("{rid}", rid).replaceAll("{uid}", rid).replaceAll("[UID]", rid).replaceAll("{PID}", pidValue).replaceAll("[PID]", pidValue).replaceAll("{pid}", pidValue).replaceAll("{oi_session}", respondent.oiSession);
+    }
+    console.log(`Callback Redirect: ${finalRedirectUrl}`);
+    return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].redirect(new URL(finalRedirectUrl));
 }
 }),
 "[project]/app/complete/route.ts [app-route] (ecmascript)", ((__turbopack_context__) => {
