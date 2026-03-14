@@ -463,9 +463,13 @@ export class DatabaseStorage implements IStorage {
     const { data: suppliers } = await insforge.database.from("suppliers").select("id, name, code");
     const supplierMap = new Map((suppliers || []).map(s => [s.code, s.name]));
 
+    const { data: projects } = await insforge.database.from("projects").select("project_code, project_name");
+    const projectMap = new Map((projects || []).map(p => [p.project_code, p.project_name]));
+
     return respondents.map(r => ({
       ...mapRespondent(r),
-      supplierName: r.supplier_code ? supplierMap.get(r.supplier_code) || "Direct Traffic" : "Direct Traffic"
+      supplierName: r.supplier_code ? supplierMap.get(r.supplier_code) || "Direct Traffic" : "Direct Traffic",
+      projectName: projectMap.get(r.project_code) || r.project_code
     }));
   }
 

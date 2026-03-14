@@ -263,6 +263,7 @@ export default function DashboardPage() {
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Supplier Name</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Client UID Sent</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Project</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Project Code</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">IP Address</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Device</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">User Agent</TableHead>
@@ -275,8 +276,8 @@ export default function DashboardPage() {
                 {latestQuery.isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i} className="border-slate-50">
-                      {Array.from({ length: 10 }).map((_, j) => (
-                        <TableCell key={j} className={j === 0 ? "pl-8" : j === 9 ? "pr-8" : ""}>
+                      {Array.from({ length: 11 }).map((_, j) => (
+                        <TableCell key={j} className={j === 0 ? "pl-8" : j === 10 ? "pr-8" : ""}>
                           <Skeleton className="h-4 w-20 bg-slate-100" />
                         </TableCell>
                       ))}
@@ -287,6 +288,7 @@ export default function DashboardPage() {
                     <TableCell className="pl-8 font-mono text-[11px] text-slate-500 font-bold">{r.supplierRid || "-"}</TableCell>
                     <TableCell className="text-xs font-bold text-slate-700">{r.supplierName || "Direct Traffic"}</TableCell>
                     <TableCell className="text-xs font-mono text-slate-400">{r.clientRid || "-"}</TableCell>
+                    <TableCell className="text-xs font-bold text-slate-700 max-w-[150px] truncate">{r.projectName || r.projectCode}</TableCell>
                     <TableCell>
                       <span className="text-xs font-black text-primary px-2 py-1 bg-primary/5 rounded-lg border border-primary/10 capitalize">
                         {r.projectCode}
