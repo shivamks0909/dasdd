@@ -393,10 +393,22 @@ export type InsertSupplierProjectAccess = z.infer<typeof insertSupplierProjectAc
 // Dashboard stats type
 export type DashboardStats = {
   totalProjects: number;
+  activeProjects: number;
   totalRespondents: number;
   completes: number;
   terminates: number;
   quotafulls: number;
   securityTerminates: number;
+  
+  // Today's stats
+  clicksToday: number;
+  completesToday: number;
+  quotafullToday: number;
+  terminatesToday: number;
+  inProgressToday: number;
+  duplicatesToday: number;
+  securityToday: number;
+  conversionRateToday: string;
+  
   activityData: { date: string; count: number }[];
 };

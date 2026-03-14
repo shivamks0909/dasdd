@@ -22,7 +22,7 @@ export default function SupplierProjectsPage() {
   const { toast } = useToast();
 
   const { data: projects, isLoading } = useQuery<Project[]>({
-    queryKey: ["/api/supplier/projects"], // I'll add this endpoint
+    queryKey: ["/api/supplier/projects"], 
   });
 
   const filteredProjects = useMemo(() => {
@@ -118,7 +118,7 @@ export default function SupplierProjectsPage() {
                             variant="outline" 
                             size="sm"
                             className="h-8 border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200"
-                            onClick={() => copyToClipboard(`${window.location.origin}/t/${p.projectCode}?sup={SUPPLIER_CODE}&rid={RESPONDENT_ID}`)}
+                            onClick={() => copyToClipboard(`${window.location.origin}/t/${p.projectCode}?sup={SUPPLIER_CODE}&uid={RESPONDENT_ID}`)}
                           >
                             <Copy className="w-3.5 h-3.5 mr-1.5" />
                             Link
@@ -129,7 +129,7 @@ export default function SupplierProjectsPage() {
                             className="h-8 border-slate-200 text-slate-600"
                             asChild
                           >
-                            <a href={`/t/${p.projectCode}?sup=TEST&rid=TEST_USER`} target="_blank" rel="noreferrer">
+                            <a href={`/t/${p.projectCode}?sup=TEST&uid=TEST_USER`} target="_blank" rel="noreferrer">
                               <ExternalLink className="w-3.5 h-3.5" />
                             </a>
                           </Button>

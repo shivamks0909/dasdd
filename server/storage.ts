@@ -504,20 +504,50 @@ export class DatabaseStorage implements IStorage {
 
   // Internal stats calculation
   async getDashboardStats() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString();
+
     const { count: totalProjects } = await insforge.database.from("projects").select("*", { count: 'exact', head: true });
+    const { count: activeProjects } = await insforge.database.from("projects").select("*", { count: 'exact', head: true }).eq("status", "active");
+    
     const { count: totalRespondents } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true });
     const { count: completes } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "complete");
     const { count: terminates } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "terminate");
     const { count: quotafulls } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "quotafull");
     const { count: securityTerminates } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "security-terminate");
 
+    // Today's stats
+    const { count: clicksToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).gte("started_at", todayStr);
+    const { count: completesToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "complete").gte("started_at", todayStr);
+    const { count: quotafullToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "quotafull").gte("started_at", todayStr);
+    const { count: terminatesToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "terminate").gte("started_at", todayStr);
+    const { count: securityToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "security-terminate").gte("started_at", todayStr);
+    const { count: duplicatesToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "duplicate").gte("started_at", todayStr);
+    const { count: inProgressToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "started").gte("started_at", todayStr);
+
+    const conversionRateToday = clicksToday && clicksToday > 0 
+      ? ((completesToday || 0) / clicksToday * 100).toFixed(1) + "%"
+      : "0%";
+
     return {
       totalProjects: totalProjects || 0,
+      activeProjects: activeProjects || 0,
       totalRespondents: totalRespondents || 0,
       completes: completes || 0,
       terminates: terminates || 0,
       quotafulls: quotafulls || 0,
       securityTerminates: securityTerminates || 0,
+      
+      clicksToday: clicksToday || 0,
+      completesToday: completesToday || 0,
+      quotafullToday: quotafullToday || 0,
+      terminatesToday: terminatesToday || 0,
+      inProgressToday: inProgressToday || 0,
+      duplicatesToday: duplicatesToday || 0,
+      securityToday: securityToday || 0,
+      conversionRateToday,
+      
       activityData: [],
     };
   }
@@ -843,11 +873,20 @@ export class DatabaseStorage implements IStorage {
     if (projectCodes.length === 0) {
       return {
         totalProjects: 0,
+        activeProjects: 0,
         totalRespondents: 0,
         completes: 0,
         terminates: 0,
         quotafulls: 0,
         securityTerminates: 0,
+        clicksToday: 0,
+        completesToday: 0,
+        quotafullToday: 0,
+        terminatesToday: 0,
+        inProgressToday: 0,
+        duplicatesToday: 0,
+        securityToday: 0,
+        conversionRateToday: "0%",
         activityData: [],
       };
     }
@@ -860,47 +899,107 @@ export class DatabaseStorage implements IStorage {
       .select("*", { count: 'exact', head: true })
       .eq("user_id", userId);
 
+    // Cumulative All-time stats
     const { count: totalRespondents } = await insforge.database.from("respondents")
+      .select("*", { count: 'exact', head: true })
+      .eq("supplier_code", supplierCode)
+      .in("project_code", projectCodes);
+
+    const { count: completes } = await insforge.database.from("respondents")
+      .select("*", { count: 'exact', head: true })
+      .eq("supplier_code", supplierCode)
+      .in("project_code", projectCodes)
+      .eq("status", "complete");
+
+    const { count: terminates } = await insforge.database.from("respondents")
+      .select("*", { count: 'exact', head: true })
+      .eq("supplier_code", supplierCode)
+      .in("project_code", projectCodes)
+      .eq("status", "terminate");
+
+    const { count: quotafulls } = await insforge.database.from("respondents")
+      .select("*", { count: 'exact', head: true })
+      .eq("supplier_code", supplierCode)
+      .in("project_code", projectCodes)
+      .eq("status", "quotafull");
+
+    const { count: securityTerminates } = await insforge.database.from("respondents")
+      .select("*", { count: 'exact', head: true })
+      .eq("supplier_code", supplierCode)
+      .in("project_code", projectCodes)
+      .eq("status", "security-terminate");
+
+    // Today's stats
+    const { count: clicksToday } = await insforge.database.from("respondents")
       .select("*", { count: 'exact', head: true })
       .eq("supplier_code", supplierCode)
       .in("project_code", projectCodes)
       .gte("started_at", todayStr);
 
-    const { count: completes } = await insforge.database.from("respondents")
+    const { count: completesToday } = await insforge.database.from("respondents")
       .select("*", { count: 'exact', head: true })
       .eq("supplier_code", supplierCode)
       .in("project_code", projectCodes)
       .eq("status", "complete")
       .gte("started_at", todayStr);
 
-    const { count: terminates } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .eq("status", "terminate")
-      .gte("started_at", todayStr);
-
-    const { count: quotafulls } = await insforge.database.from("respondents")
+    const { count: quotafullToday } = await insforge.database.from("respondents")
       .select("*", { count: 'exact', head: true })
       .eq("supplier_code", supplierCode)
       .in("project_code", projectCodes)
       .eq("status", "quotafull")
       .gte("started_at", todayStr);
 
-    const { count: securityTerminates } = await insforge.database.from("respondents")
+    const { count: terminatesToday } = await insforge.database.from("respondents")
+      .select("*", { count: 'exact', head: true })
+      .eq("supplier_code", supplierCode)
+      .in("project_code", projectCodes)
+      .eq("status", "terminate")
+      .gte("started_at", todayStr);
+
+    const { count: inProgressToday } = await insforge.database.from("respondents")
+      .select("*", { count: 'exact', head: true })
+      .eq("supplier_code", supplierCode)
+      .in("project_code", projectCodes)
+      .eq("status", "started")
+      .gte("started_at", todayStr);
+
+    const { count: securityToday } = await insforge.database.from("respondents")
       .select("*", { count: 'exact', head: true })
       .eq("supplier_code", supplierCode)
       .in("project_code", projectCodes)
       .eq("status", "security-terminate")
       .gte("started_at", todayStr);
 
+    const { count: duplicatesToday } = await insforge.database.from("respondents")
+      .select("*", { count: 'exact', head: true })
+      .eq("supplier_code", supplierCode)
+      .in("project_code", projectCodes)
+      .eq("status", "duplicate")
+      .gte("started_at", todayStr);
+
+    const conversionRateToday = clicksToday && clicksToday > 0 
+      ? ((completesToday || 0) / clicksToday * 100).toFixed(1) + "%"
+      : "0%";
+
     return {
       totalProjects: totalProjects || 0,
+      activeProjects: totalProjects || 0,
       totalRespondents: totalRespondents || 0,
       completes: completes || 0,
       terminates: terminates || 0,
       quotafulls: quotafulls || 0,
       securityTerminates: securityTerminates || 0,
+      
+      clicksToday: clicksToday || 0,
+      completesToday: completesToday || 0,
+      quotafullToday: quotafullToday || 0,
+      terminatesToday: terminatesToday || 0,
+      inProgressToday: inProgressToday || 0,
+      duplicatesToday: duplicatesToday || 0,
+      securityToday: securityToday || 0,
+      conversionRateToday,
+      
       activityData: [],
     };
   }

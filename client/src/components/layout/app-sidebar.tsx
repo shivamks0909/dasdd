@@ -24,7 +24,7 @@ const navItems = [
     { title: "Clients", url: "/admin/clients", icon: Users },
     { title: "Suppliers", url: "/admin/suppliers", icon: Truck },
     { title: "Link Generator", url: "/admin/link-generator", icon: LinkIcon },
-    { title: "Redirects", url: "/admin/redirects", icon: ExternalLink },
+    { title: "Tool Links", url: "/admin/redirects", icon: ExternalLink },
     { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 
