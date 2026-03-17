@@ -61,43 +61,75 @@ export default function DashboardPage() {
     activityData: [],
   };
 
+  const irPercent = stats.totalRespondents > 0
+    ? ((stats.completes / stats.totalRespondents) * 100).toFixed(1)
+    : "0.0";
+
   return (
     <div className="space-y-10 pb-12">
-      {/* Stat Cards Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 8 Stat Cards Grid */}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
         <StatCard
-          title="Total Projects"
-          value={stats.totalProjects}
-          icon={Users}
-          description="Active Campaign Reach"
-          className="shadow-sm"
-        />
-        <StatCard
-          title="Total Traffic"
+          title="Total Hits"
           value={stats.totalRespondents}
           icon={Activity}
-          description="Live Hits Real-time"
-          className="shadow-sm"
+          description="Total Router Clicks"
+          className="shadow-sm border-slate-200/60 bg-white/60"
         />
         <StatCard
-          title="Success Chain"
+          title="Total Starts"
+          value={stats.totalRespondents}
+          icon={Users}
+          description="In-Progress Sessions"
+          className="shadow-sm border-slate-200/60 bg-white/60"
+        />
+        <StatCard
+          title="Completes"
           value={stats.completes}
           icon={CheckCircle2}
-          description="Verified Submissions"
-          className="shadow-sm"
+          description="Successful Submissions"
+          className="shadow-sm border-slate-200/60 bg-white/60"
         />
         <StatCard
-          title="System Filtered"
-          value={stats.terminates + stats.securityTerminates}
+          title="Terminates"
+          value={stats.terminates}
           icon={XCircle}
-          description="Fraud & Terminations"
-          className="shadow-sm"
+          description="Screened Out"
+          className="shadow-sm border-slate-200/60 bg-white/60"
+        />
+        <StatCard
+          title="Quota Full"
+          value={stats.quotafulls}
+          icon={AlertCircle}
+          description="Over Quota Capacity"
+          className="shadow-sm border-slate-200/60 bg-white/60"
+        />
+        <StatCard
+          title="Security / Fraud"
+          value={stats.securityTerminates}
+          icon={ShieldAlert}
+          description="Blocked Sessions"
+          className="shadow-sm border-slate-200/60 bg-white/60"
+        />
+        <StatCard
+          title="Conversion (IR %)"
+          value={`${irPercent}%`}
+          icon={TrendingUp}
+          description="Completes / Starts"
+          className="shadow-sm border-slate-200/60 bg-white/60"
+        />
+        <StatCard
+          title="Revenue"
+          value="$0.00"
+          icon={Activity}
+          description="Estimated (Optional)"
+          className="shadow-sm border-slate-200/60 bg-white/60"
         />
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        {/* Intelligence Chart placeholder - Keeping original layout but making grid 2 cols */}
-        <Card className="bg-white/40 border-slate-200/60 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl shadow-slate-200/20 overflow-hidden relative group">
+      <div className="grid gap-8 lg:grid-cols-3">
+        {/* Intelligence Chart placeholder - Keeping original layout but making grid 3 cols */}
+        <Card className="lg:col-span-2 bg-white/40 border-slate-200/60 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl shadow-slate-200/20 overflow-hidden relative group">
           <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:rotate-12 transition-transform duration-700">
             <TrendingUp className="w-32 h-32" />
           </div>
@@ -160,60 +192,95 @@ export default function DashboardPage() {
         <div className="grid gap-8">
           {/* Security Alert Monitor */}
           <SecurityAlerts />
-
-          {/* Live Event Stream */}
-          <Card className="bg-white/40 border-slate-200/60 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl shadow-slate-200/20 overflow-hidden group">
-            <CardHeader className="p-8 border-b border-slate-100 flex flex-row items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-primary/10 transition-colors">
-                  <Activity className="w-4 h-4 text-slate-500 group-hover:text-primary transition-colors" />
-                </div>
-                <CardTitle className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Event Stream</CardTitle>
-              </div>
-              <GlassButton
-                size="sm"
-                className="h-8 px-3 rounded-xl border border-slate-200"
-                onClick={() => setLocation("/admin/responses")}
-              >
-                <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-primary transition-colors" />
-              </GlassButton>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-slate-100 max-h-[220px] overflow-y-auto no-scrollbar">
-                {latestQuery.isLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="p-6 flex items-center gap-4">
-                      <Skeleton className="size-10 rounded-full bg-slate-100" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-3 w-32 bg-slate-100" />
-                        <Skeleton className="h-2 w-20 bg-slate-100" />
-                      </div>
-                    </div>
-                  ))
-                ) : latestQuery.data?.length === 0 ? (
-                  <div className="p-12 text-center text-slate-300 italic text-sm">
-                    Silent stream... no records yet
-                  </div>
-                ) : (
-                  latestQuery.data?.slice(0, 5).map((r) => (
-                    <div key={r.id} className="p-6 hover:bg-white/40 transition-colors group/item">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-black text-slate-300 tracking-widest uppercase">
-                          {new Date(r.startedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <StatusBadge status={r.status || "started"} className="scale-75 origin-right" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-black text-slate-800 tracking-tight">{r.projectCode}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
+
+      {/* 2️⃣ LIVE TRAFFIC PANEL 🔴 */}
+      <Card className="bg-white/60 border-slate-200/60 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl shadow-slate-200/20 overflow-hidden group">
+        <CardHeader className="p-8 border-b border-slate-100 flex flex-row items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </div>
+              <CardTitle className="text-sm font-black uppercase tracking-[0.2em] text-slate-800">Live Traffic Panel</CardTitle>
+            </div>
+            <p className="text-xs text-slate-400 font-semibold pl-6">Real-time cross-network router stream</p>
+          </div>
+          <GlassButton
+            size="sm"
+            className="h-10 px-5 rounded-xl border border-slate-200 font-bold tracking-widest text-[10px] uppercase text-slate-500 hover:text-primary transition-colors"
+            onClick={() => setLocation("/admin/responses")}
+          >
+            Full Log <ArrowRight className="w-3 h-3 ml-2 inline-block" />
+          </GlassButton>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/50">
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Time</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Supplier</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Supplier UID</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Client UID</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Project</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Country</th>
+                  <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {latestQuery.isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="p-6"><Skeleton className="h-4 w-16 bg-slate-100" /></td>
+                      <td className="p-6"><Skeleton className="h-4 w-24 bg-slate-100" /></td>
+                      <td className="p-6"><Skeleton className="h-4 w-32 bg-slate-100" /></td>
+                      <td className="p-6"><Skeleton className="h-4 w-32 bg-slate-100" /></td>
+                      <td className="p-6"><Skeleton className="h-4 w-20 bg-slate-100" /></td>
+                      <td className="p-6"><Skeleton className="h-4 w-12 bg-slate-100" /></td>
+                      <td className="p-6 flex justify-end"><Skeleton className="h-6 w-20 bg-slate-100 rounded-full" /></td>
+                    </tr>
+                  ))
+                ) : latestQuery.data?.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-12 text-center text-slate-400 font-semibold text-sm">
+                      Silent stream... no records yet
+                    </td>
+                  </tr>
+                ) : (
+                  latestQuery.data?.slice(0, 10).map((r: any) => (
+                    <tr key={r.id} className="hover:bg-white/80 transition-colors group">
+                      <td className="px-6 py-4 text-xs font-bold text-slate-500 whitespace-nowrap">
+                        {new Date(r.startedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-black text-slate-700 uppercase tracking-tight">
+                        {r.supplierName || r.supplierCode || "Direct"}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-mono text-slate-500 truncate max-w-[120px]" title={r.supplierRid || r.id}>
+                        {r.supplierRid || r.id}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-mono text-slate-500 truncate max-w-[120px]" title={r.clientRid || "..."}>
+                        {r.clientRid || "CONNECTING"}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-black text-slate-700 uppercase">
+                        {r.projectName || r.projectCode}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
+                        {r.countryCode || "US"}
+                      </td>
+                      <td className="px-6 py-4 flex justify-end">
+                        <StatusBadge status={r.status || "started"} />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

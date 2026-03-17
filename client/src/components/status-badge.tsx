@@ -32,13 +32,13 @@ const statusConfig: Record<StatusType, { label: string; className: string; shado
   },
   security_terminate: {
     label: "Security Terminate",
-    className: "bg-slate-100/80 text-slate-700 border-slate-200/50",
-    shadow: "shadow-none",
+    className: "bg-blue-100/80 text-blue-700 border-blue-200/50",
+    shadow: "shadow-sm shadow-blue-200/40",
   },
   "security-terminate": {
     label: "Security Terminate",
-    className: "bg-slate-100/80 text-slate-700 border-slate-200/50",
-    shadow: "shadow-none",
+    className: "bg-blue-100/80 text-blue-700 border-blue-200/50",
+    shadow: "shadow-sm shadow-blue-200/40",
   },
   started: {
     label: "Started",

@@ -160,16 +160,19 @@ export default function ResponsesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-none">
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Supplier UID (Incoming)</TableHead>
+                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Supplier UID</TableHead>
+                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Client UID</TableHead>
                     <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Supplier</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Client UID Sent</TableHead>
                     <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Project</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">IP Address</TableHead>
+                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Code</TableHead>
+                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">IP</TableHead>
                     <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Device</TableHead>
                     <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">User Agent</TableHead>
                     <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Status</TableHead>
+                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Start</TableHead>
+                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">End</TableHead>
                     <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto text-right flex items-center justify-end gap-1">
-                      Timestamp <Clock className="w-3 h-3 animate-pulse text-emerald-500" />
+                      LOI <Clock className="w-3 h-3 animate-pulse text-emerald-500" />
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -180,15 +183,16 @@ export default function ResponsesPage() {
                       const s = new Date(start).getTime();
                       const e = new Date(end).getTime();
                       const diff = Math.floor((e - s) / 60000);
-                      return `${diff}m`;
+                      return diff < 1 ? "< 1m" : `${diff}m`;
                     };
 
                     return (
                       <TableRow key={r.id} className="group hover:bg-slate-50 transition-all border-none">
-                        <TableCell className="px-6 py-8">
-                           <div className="flex flex-col">
-                            <span className="text-[11px] font-bold text-slate-400 font-mono tracking-tight">{r.supplierRid || r.id}</span>
-                          </div>
+                        <TableCell className="px-6 py-5">
+                          <span className="text-[11px] font-bold text-slate-400 font-mono tracking-tight">{r.supplierRid || r.id}</span>
+                        </TableCell>
+                        <TableCell className="px-6">
+                           <span className="text-[13px] font-black text-slate-700 font-mono tracking-tight uppercase">{r.clientRid || "CONNECTING"}</span>
                         </TableCell>
                         <TableCell className="px-6">
                            <span className="text-[11px] font-black text-primary uppercase tracking-tighter bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10">
@@ -196,23 +200,17 @@ export default function ResponsesPage() {
                           </span>
                         </TableCell>
                         <TableCell className="px-6">
-                           <div className="flex flex-col gap-1">
-                            <span className="text-[13px] font-black text-slate-700 font-mono tracking-tight uppercase">{r.clientRid || "CONNECTING..."}</span>
-                            <span className="text-[8px] font-bold text-primary/40 uppercase tracking-[0.2em]">Rid-Generated</span>
-                          </div>
+                          <span className="text-[12px] font-black text-slate-800 tracking-tight leading-none uppercase">{r.projectName || r.projectCode}</span>
                         </TableCell>
                         <TableCell className="px-6">
-                           <div className="flex flex-col">
-                            <span className="text-[12px] font-black text-slate-800 tracking-tight leading-none mb-1 uppercase">{r.projectName || r.projectCode}</span>
-                            <span className="text-[9px] font-bold text-slate-400 font-mono uppercase tracking-widest">{r.projectCode}</span>
-                          </div>
+                          <span className="text-[10px] font-bold text-slate-400 font-mono uppercase tracking-widest">{r.projectCode}</span>
                         </TableCell>
                         <TableCell className="px-6">
                           <span className="text-[11px] font-mono font-bold text-slate-500">{r.ipAddress || "0.0.0.0"}</span>
                         </TableCell>
                         <TableCell className="px-6">
-                           <div className="flex flex-col items-center gap-1">
-                            {getDeviceIcon(r.userAgent || null)}
+                           <div className="flex flex-col gap-1 items-start">
+                             {getDeviceIcon(r.userAgent || null)}
                             <span className="text-[9px] font-bold text-slate-400 uppercase">{getDeviceType(r.userAgent || null)}</span>
                           </div>
                         </TableCell>
@@ -222,24 +220,39 @@ export default function ResponsesPage() {
                           </span>
                         </TableCell>
                         <TableCell className="px-6">
-                        <StatusBadge status={r.status || "started"} className="h-6 text-[9px] font-black" />
+                          <StatusBadge status={r.status || "started"} className="h-6 text-[9px] font-black" />
                         </TableCell>
-                        <TableCell className="px-6 text-right">
-                          <div className="flex flex-col items-end">
-                            <span className="text-[11px] font-black text-slate-600 whitespace-nowrap">
-                              {new Date(r.startedAt || Date.now()).toLocaleDateString([], { month: 'numeric', day: 'numeric', year: 'numeric' })}
+                        <TableCell className="px-6">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">
+                              {r.startedAt ? new Date(r.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : "—"}
                             </span>
-                            <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
-                              {new Date(r.startedAt || Date.now()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}
+                            <span className="text-[9px] font-medium text-slate-400 whitespace-nowrap">
+                              {r.startedAt ? new Date(r.startedAt).toLocaleDateString() : ""}
                             </span>
                           </div>
+                        </TableCell>
+                        <TableCell className="px-6">
+                           <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">
+                              {r.completedAt ? new Date(r.completedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : "—"}
+                            </span>
+                            <span className="text-[9px] font-medium text-slate-400 whitespace-nowrap">
+                              {r.completedAt ? new Date(r.completedAt).toLocaleDateString() : ""}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 text-right">
+                          <span className="text-[12px] font-black text-slate-600 inline-block bg-slate-100 px-2 py-1 rounded">
+                            {getLOI(r.startedAt, r.completedAt)}
+                          </span>
                         </TableCell>
                       </TableRow>
                     );
                   })}
                   {!isLoading && filteredResponses?.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={9} className="h-64 text-center">
+                      <TableCell colSpan={12} className="h-64 text-center">
                         <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
                           <Database className="w-12 h-12 text-slate-400" />
                           <p className="text-sm font-black uppercase tracking-[0.3em] text-slate-500">No Synchronized Records</p>
