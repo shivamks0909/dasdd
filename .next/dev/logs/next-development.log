@@ -1,1 +1,52 @@
-[00:00:04.053] Server  LOG     ✓ Ready in 2.7s
+[00:00:03.554] Server  LOG     ✓ Ready in 2.8s
+[00:01:31.239] Server  LOG     [dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[00:01:31.248] Server  LOG     InsForge Client Initialized: {}
+[00:01:32.252] Server  LOG     [NextRoute] GET /t/[code] triggered for code=OPI-TECH-24
+[00:01:32.254] Server  LOG     [TrackingCore] Processing: project=OPI-TECH-24, country=, sup=TEST_SUPP_1773589013687, rid=TEST123
+[00:01:34.138] Server  LOG     [TrackingCore] Project valid: Technology Adoption Study
+[00:01:58.524] Server  LOG     [NextRoute] GET /t/[code] triggered for code=OPI-TECH-24
+[00:01:58.525] Server  LOG     [TrackingCore] Processing: project=OPI-TECH-24, country=, sup=TEST_SUPP_1773589013687, rid=TEST123
+[00:01:59.926] Server  LOG     [TrackingCore] Project valid: Technology Adoption Study
+[00:02:24.103] Server  LOG     [NextRoute] GET /t/[code] triggered for code=OPI-TECH-24
+[00:02:24.107] Server  LOG     [TrackingCore] Processing: project=OPI-TECH-24, country=US, sup=TEST_SUPP_1773589013687, rid=TEST123
+[00:02:25.613] Server  LOG     [TrackingCore] Project valid: Technology Adoption Study
+[00:03:58.145] Server  LOG     [dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+[00:03:58.169] Server  LOG     InsForge Client Initialized: {}
+[00:04:46.027] Server  LOG     ✓ Finished filesystem cache database compaction in 46s
+[00:15:01.022] Server  LOG     [NextRoute] GET /t/[code] triggered for code=OPI-TECH-24
+[00:15:01.025] Server  LOG     [TrackingCore] Processing: project=OPI-TECH-24, country=US, sup=TEST_SUPP_1773589013687, rid=E2E_TEST_001
+[00:15:02.165] Server  LOG     [TrackingCore] Project valid: Technology Adoption Study
+[00:15:48.394] Server  LOG     [dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[00:15:48.407] Server  LOG     InsForge Client Initialized: {}
+[00:36:40.359] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:00:14.043] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:00:22.325] Server  LOG     Login attempt for: "admin"
+[02:00:24.422] Server  LOG     Admin found: "YES"
+[02:00:24.422] Server  LOG     Comparing password with hash: "$2b$10$JRV4yoR9JEuqD.Nk2nXmyeEnmgLhqRhzUZBtiboov8TRE72nEsE0W"
+[02:00:24.520] Server  LOG     Password valid: true
+[02:04:54.126] Server  LOG     ✓ Compiled in 3.1s
+[02:06:03.488] Server  LOG     ✓ Compiled in 12.6s
+[02:06:48.679] Server  LOG     ✓ Compiled in 425ms
+[02:09:24.738] Server  LOG     ✓ Compiled in 2.8s
+[02:09:57.013] Server  LOG     ○ Compiling /api/projects/[id] ...
+[02:11:23.525] Server  LOG     ✓ Finished filesystem cache database compaction in 76s
+[02:11:23.590] Server  LOG     ✓ Finished writing to filesystem cache in 73s
+[02:11:51.145] Server  LOG     [TrackingCore] Processing: project=ASDASED, country=US, sup=MACK, rid=asdaweqwe
+[02:11:51.957] Server  LOG     [TrackingCore] Project valid: aweqwe
+[02:20:20.528] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:22:24.771] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:23:21.915] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:24:56.256] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:25:25.485] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:25:59.644] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:26:03.215] Server  LOG     Login attempt for: "admin"
+[02:26:04.761] Server  LOG     Admin found: "YES"
+[02:26:04.762] Server  LOG     Comparing password with hash: "$2b$10$JRV4yoR9JEuqD.Nk2nXmyeEnmgLhqRhzUZBtiboov8TRE72nEsE0W"
+[02:26:04.934] Server  LOG     Password valid: true
+[02:26:36.389] Server  LOG     ○ Compiling /api/admin/suppliers/users ...
+[02:27:31.906] Server  LOG     ✓ Finished filesystem cache database compaction in 47s
+[02:34:50.827] Server  LOG     ✓ Compiled in 8.2s
+[02:35:08.250] Server  LOG       Reload env: .env
+[02:35:25.486] Server  LOG     ✓ Finished writing to filesystem cache in 13.8s
+[02:35:27.309] Server  LOG     [dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[02:35:27.322] Server  LOG     InsForge Client Initialized: {}

@@ -1,22 +1,27 @@
 {
-  "[project]/client/src/App.tsx [app-client] (ecmascript, next/dynamic entry)": {
-    "id": "[project]/client/src/App.tsx [app-client] (ecmascript, next/dynamic entry)",
+  "[project]/Downloads/Opinion-Routing-Platform/client/src/App.tsx [app-client] (ecmascript, next/dynamic entry)": {
+    "id": "[project]/Downloads/Opinion-Routing-Platform/client/src/App.tsx [app-client] (ecmascript, next/dynamic entry)",
     "files": [
-      "static/chunks/client_src_components_2ebd00da._.js",
-      "static/chunks/client_src_pages_admin_f0b0fa9e._.js",
-      "static/chunks/client_src_pages_supplier_fb4f87a5._.js",
-      "static/chunks/client_src_pages_6c31b05a._.js",
-      "static/chunks/client_src_bc6709e2._.js",
-      "static/chunks/shared_schema_ts_b9c732a5._.js",
-      "static/chunks/node_modules_@tanstack_query-core_build_modern_14b126fb._.js",
-      "static/chunks/node_modules_zod_v3_511383c7._.js",
-      "static/chunks/node_modules_lodash_c8d69288._.js",
-      "static/chunks/node_modules_recharts_es6_8ef08737._.js",
-      "static/chunks/node_modules_drizzle-orm_c8d663b8._.js",
-      "static/chunks/node_modules_@radix-ui_e60a8d2e._.js",
-      "static/chunks/node_modules_@floating-ui_1b6e7b6d._.js",
-      "static/chunks/node_modules_788b6fdc._.js",
-      "static/chunks/client_src_App_tsx_ce1e31bb._.js"
+      "static/chunks/Downloads_Opinion-Routing-Platform_client_src_components_6abfa151._.js",
+      "static/chunks/6c7f9_Opinion-Routing-Platform_client_src_pages_admin_project-form_tsx_c291c330._.js",
+      "static/chunks/Downloads_Opinion-Routing-Platform_client_src_pages_admin_suppliers_tsx_cf2aa565._.js",
+      "static/chunks/6c7f9_Opinion-Routing-Platform_client_src_pages_admin_link-generator_tsx_c5d967b3._.js",
+      "static/chunks/Downloads_Opinion-Routing-Platform_client_src_pages_admin_73559ad4._.js",
+      "static/chunks/Downloads_Opinion-Routing-Platform_client_src_pages_supplier_860ae5d8._.js",
+      "static/chunks/Downloads_Opinion-Routing-Platform_client_src_pages_31636dd4._.js",
+      "static/chunks/Downloads_Opinion-Routing-Platform_client_src_e8b8f954._.js",
+      "static/chunks/Downloads_Opinion-Routing-Platform_shared_schema_ts_51b43a46._.js",
+      "static/chunks/80b64_@tanstack_query-core_build_modern_3024999b._.js",
+      "static/chunks/80b64_lucide-react_dist_esm_6441e982._.js",
+      "static/chunks/80b64_framer-motion_dist_es_309bceaa._.js",
+      "static/chunks/80b64_zod_v3_7512050e._.js",
+      "static/chunks/80b64_lodash_0f59ea86._.js",
+      "static/chunks/80b64_recharts_es6_fe1b745b._.js",
+      "static/chunks/80b64_drizzle-orm_40fd087f._.js",
+      "static/chunks/80b64_@radix-ui_fe493252._.js",
+      "static/chunks/80b64_@floating-ui_9c89e7dd._.js",
+      "static/chunks/80b64_508cc28f._.js",
+      "static/chunks/Downloads_Opinion-Routing-Platform_client_src_App_tsx_814af510._.js"
     ]
   }
 }

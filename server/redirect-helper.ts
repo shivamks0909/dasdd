@@ -24,10 +24,16 @@ export async function redirectToSupplierOrLanding(respondent: any, status: strin
       }
     }
 
-    // 2. Fallback if no specific url found (use status page)
+    // 2. Fallback if no specific url found (use unified status router)
     if (!redirectUrl) {
-      const pageName = status === 'security-terminate' ? 'security' : status;
-      redirectUrl = `${baseUrl}/pages/${pageName}?pid=${respondent.projectCode}&uid=${respondent.supplierRid}`;
+      const typeMap: Record<string, string> = {
+        'complete': 'complete',
+        'terminate': 'terminate',
+        'quotafull': 'quota',
+        'security-terminate': 'security_terminate'
+      };
+      const type = typeMap[status] || status;
+      redirectUrl = `https://track.opinioninsights.in/status?code=${respondent.projectCode}&uid=${respondent.supplierRid}&type=${type}`;
     } else {
       // Replace macros if any
       const rid = respondent.supplierRid || "";
@@ -57,9 +63,15 @@ export async function redirectToSupplierOrLanding(respondent: any, status: strin
 
     return { response: NextResponse.redirect(new URL(redirectUrl)), url: redirectUrl };
   } else {
-    // DIRECT USER FLOW — show our landing page
-    const pageName = status === 'security-terminate' ? 'security' : status;
-    const landingUrl = `${baseUrl}/pages/${pageName}?pid=${respondent.projectCode}&uid=${respondent.supplierRid}`;
+    // DIRECT USER FLOW — show unified status page
+    const typeMap: Record<string, string> = {
+      'complete': 'complete',
+      'terminate': 'terminate',
+      'quotafull': 'quota',
+      'security-terminate': 'security_terminate'
+    };
+    const type = typeMap[status] || status;
+    const landingUrl = `https://track.opinioninsights.in/status?code=${respondent.projectCode}&uid=${respondent.supplierRid}&type=${type}`;
     return { response: NextResponse.redirect(new URL(landingUrl)), url: landingUrl };
   }
 }

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { useDimensions } from "@/components/hooks/use-debounced-dimensions"
 
 interface PixelTrailProps {
-  pixelSize?: number // px
+  pixelSize: number // px
   fadeDuration?: number // ms
   delay?: number // ms
   className?: string
@@ -21,7 +21,7 @@ const PixelTrail: React.FC<PixelTrailProps> = ({
   pixelClassName,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const dimensions = useDimensions(containerRef as React.RefObject<HTMLElement>)
+  const dimensions = useDimensions(containerRef)
   const trailId = useRef(uuidv4())
 
   const handleMouseMove = useCallback(
@@ -98,6 +98,7 @@ const PixelDot: React.FC<PixelDotProps> = React.memo(
       })
     }, [controls, fadeDuration, delay])
 
+    // Attach the animatePixel function to the DOM element
     const ref = useCallback(
       (node: HTMLDivElement | null) => {
         if (node) {
@@ -111,7 +112,7 @@ const PixelDot: React.FC<PixelDotProps> = React.memo(
       <motion.div
         id={id}
         ref={ref}
-        className={cn("cursor-none", className)}
+        className={cn("cursor-pointer-none", className)}
         style={{
           width: `${size}px`,
           height: `${size}px`,

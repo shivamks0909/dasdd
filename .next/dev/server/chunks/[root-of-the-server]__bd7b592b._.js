@@ -502,6 +502,27 @@ class DatabaseStorage {
         });
         return (data || []).map(mapRespondent);
     }
+    async getEnrichedRespondents(limit = 100) {
+        const { data: respondents } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").order("started_at", {
+            ascending: false
+        }).limit(limit);
+        if (!respondents) return [];
+        const { data: suppliers } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("suppliers").select("id, name, code");
+        const supplierMap = new Map((suppliers || []).map((s)=>[
+                s.code,
+                s.name
+            ]));
+        const { data: projects } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("projects").select("project_code, project_name");
+        const projectMap = new Map((projects || []).map((p)=>[
+                p.project_code,
+                p.project_name
+            ]));
+        return respondents.map((r)=>({
+                ...mapRespondent(r),
+                supplierName: r.supplier_code ? supplierMap.get(r.supplier_code) || "Direct Traffic" : "Direct Traffic",
+                projectName: projectMap.get(r.project_code) || r.project_code
+            }));
+    }
     async getRespondentsByProject(projectCode) {
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").eq("project_code", projectCode).order("started_at", {
             ascending: false
@@ -533,10 +554,17 @@ class DatabaseStorage {
     }
     // Internal stats calculation
     async getDashboardStats() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString();
         const { count: totalProjects } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("projects").select("*", {
             count: 'exact',
             head: true
         });
+        const { count: activeProjects } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("projects").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "active");
         const { count: totalRespondents } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
             count: 'exact',
             head: true
@@ -557,13 +585,52 @@ class DatabaseStorage {
             count: 'exact',
             head: true
         }).eq("status", "security-terminate");
+        // Today's stats
+        const { count: clicksToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).gte("started_at", todayStr);
+        const { count: completesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "complete").gte("started_at", todayStr);
+        const { count: quotafullToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "quotafull").gte("started_at", todayStr);
+        const { count: terminatesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "terminate").gte("started_at", todayStr);
+        const { count: securityToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "security-terminate").gte("started_at", todayStr);
+        const { count: duplicatesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "duplicate").gte("started_at", todayStr);
+        const { count: inProgressToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "started").gte("started_at", todayStr);
+        const conversionRateToday = clicksToday && clicksToday > 0 ? ((completesToday || 0) / clicksToday * 100).toFixed(1) + "%" : "0%";
         return {
             totalProjects: totalProjects || 0,
+            activeProjects: activeProjects || 0,
             totalRespondents: totalRespondents || 0,
             completes: completes || 0,
             terminates: terminates || 0,
             quotafulls: quotafulls || 0,
             securityTerminates: securityTerminates || 0,
+            clicksToday: clicksToday || 0,
+            completesToday: completesToday || 0,
+            quotafullToday: quotafullToday || 0,
+            terminatesToday: terminatesToday || 0,
+            inProgressToday: inProgressToday || 0,
+            duplicatesToday: duplicatesToday || 0,
+            securityToday: securityToday || 0,
+            conversionRateToday,
             activityData: []
         };
     }
@@ -868,18 +935,31 @@ class DatabaseStorage {
         if (projectCodes.length === 0) {
             return {
                 totalProjects: 0,
+                activeProjects: 0,
                 totalRespondents: 0,
                 completes: 0,
                 terminates: 0,
                 quotafulls: 0,
                 securityTerminates: 0,
+                clicksToday: 0,
+                completesToday: 0,
+                quotafullToday: 0,
+                terminatesToday: 0,
+                inProgressToday: 0,
+                duplicatesToday: 0,
+                securityToday: 0,
+                conversionRateToday: "0%",
                 activityData: []
             };
         }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString();
         const { count: totalProjects } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_project_access").select("*", {
             count: 'exact',
             head: true
         }).eq("user_id", userId);
+        // Cumulative All-time stats
         const { count: totalRespondents } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
             count: 'exact',
             head: true
@@ -900,13 +980,52 @@ class DatabaseStorage {
             count: 'exact',
             head: true
         }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "security-terminate");
+        // Today's stats
+        const { count: clicksToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).gte("started_at", todayStr);
+        const { count: completesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "complete").gte("started_at", todayStr);
+        const { count: quotafullToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "quotafull").gte("started_at", todayStr);
+        const { count: terminatesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "terminate").gte("started_at", todayStr);
+        const { count: inProgressToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "started").gte("started_at", todayStr);
+        const { count: securityToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "security-terminate").gte("started_at", todayStr);
+        const { count: duplicatesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "duplicate").gte("started_at", todayStr);
+        const conversionRateToday = clicksToday && clicksToday > 0 ? ((completesToday || 0) / clicksToday * 100).toFixed(1) + "%" : "0%";
         return {
             totalProjects: totalProjects || 0,
+            activeProjects: totalProjects || 0,
             totalRespondents: totalRespondents || 0,
             completes: completes || 0,
             terminates: terminates || 0,
             quotafulls: quotafulls || 0,
             securityTerminates: securityTerminates || 0,
+            clicksToday: clicksToday || 0,
+            completesToday: completesToday || 0,
+            quotafullToday: quotafullToday || 0,
+            terminatesToday: terminatesToday || 0,
+            inProgressToday: inProgressToday || 0,
+            duplicatesToday: duplicatesToday || 0,
+            securityToday: securityToday || 0,
+            conversionRateToday,
             activityData: []
         };
     }

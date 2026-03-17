@@ -118,13 +118,26 @@ export interface IStorage {
   assignProjectToSupplier(access: InsertSupplierProjectAccess): Promise<SupplierProjectAccess>;
   removeProjectFromSupplier(id: string): Promise<void>;
   deleteSupplierUser(id: string): Promise<void>;
-  getSupplierRespondents(supplierCode: string, projectCodes: string[]): Promise<Respondent[]>;
+  getSupplierRespondents(supplierCode: string, projectCodes: string[], omitSensitive?: boolean): Promise<Respondent[]>;
   getSupplierStatsOverview(supplierCode: string): Promise<{
     completed: number;
     disqualified: number;
     quotafull: number;
     security: number;
   }>;
+
+  // New Supplier Isolation Methods
+  getSupplierProjectsWithStats(userId: string, supplierCode: string): Promise<any[]>;
+  getSupplierProjectStats(supplierCode: string, projectCode: string): Promise<any>;
+
+  // Quick Project Creator
+  quickCreateProject(data: {
+    projectName: string;
+    projectCode: string;
+    surveyUrl: string;
+    countryCode: string;
+  }): Promise<{ project: Project; countrySurvey: CountrySurvey }>;
+  batchCreateSupplierAssignments(assignments: InsertSupplierAssignment[]): Promise<void>;
 }
 
 // Mapping helpers to bridge snake_case DB columns and camelCase TS properties
@@ -366,8 +379,12 @@ export class DatabaseStorage implements IStorage {
       security_url: supplier.securityUrl,
       password_hash: supplier.passwordHash || null
     };
-    const { data } = await insforge.database.from("suppliers").insert([dbSupplier]).select().single();
-    if (!data) throw new Error("Failed to create supplier");
+    const { data, error } = await insforge.database.from("suppliers").insert([dbSupplier]).select().single();
+    if (error) {
+      console.error("Supabase Error on Create Supplier:", error);
+      throw new Error(`Failed to create supplier: ${JSON.stringify(error)}`);
+    }
+    if (!data) throw new Error("Failed to create supplier: No data returned");
     return mapSupplier(data);
   }
 
@@ -411,8 +428,12 @@ export class DatabaseStorage implements IStorage {
       survey_url: respondent.surveyUrl || (respondent as any).surveyUrl || null,
       verify_hash: respondent.verifyHash || (respondent as any).verifyHash || null
     };
-    const { data } = await insforge.database.from("respondents").insert([dbRespondent]).select().single();
-    if (!data) throw new Error("Failed to create respondent");
+    const { data, error } = await insforge.database.from("respondents").insert([dbRespondent]).select().single();
+    if (error) {
+      console.error("Supabase Error on Create Respondent:", error);
+      throw new Error(`Failed to create respondent: ${JSON.stringify(error)}`);
+    }
+    if (!data) throw new Error("Failed to create respondent: No data returned");
     return mapRespondent(data);
   }
 
@@ -848,8 +869,12 @@ export class DatabaseStorage implements IStorage {
       is_active: user.isActive,
       created_by: user.createdBy
     };
-    const { data } = await insforge.database.from("supplier_users").insert([dbUser]).select().single();
-    if (!data) throw new Error("Failed to create supplier user");
+    const { data, error } = await insforge.database.from("supplier_users").insert([dbUser]).select().single();
+    if (error) {
+      console.error("Supabase Error on Create Supplier User:", error);
+      throw new Error(`Failed to create supplier user: ${JSON.stringify(error)}`);
+    }
+    if (!data) throw new Error("Failed to create supplier user: No data");
     return mapSupplierUser(data);
   }
 
@@ -1004,7 +1029,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getSupplierRespondents(supplierCode: string, projectCodes: string[]): Promise<Respondent[]> {
+  async getSupplierRespondents(supplierCode: string, projectCodes: string[], omitSensitive: boolean = true): Promise<Respondent[]> {
     if (projectCodes.length === 0) return [];
     
     const { data } = await insforge.database.from("respondents")
@@ -1013,7 +1038,97 @@ export class DatabaseStorage implements IStorage {
       .in("project_code", projectCodes)
       .order("started_at", { ascending: false });
       
-    return (data || []).map(mapRespondent);
+    const respondents = (data || []).map(mapRespondent);
+    
+    if (omitSensitive) {
+      return respondents.map(r => ({
+        ...r,
+        clientRid: null,
+        surveyUrl: null,
+        s2sToken: null,
+        oiSession: "***",
+        verifyHash: null
+      }));
+    }
+    
+    return respondents;
+  }
+
+  async getSupplierProjectsWithStats(userId: string, supplierCode: string): Promise<any[]> {
+    const access = await this.getSupplierProjectAccess(userId);
+    const assignedCodes = access.map(a => a.projectCode);
+    if (assignedCodes.length === 0) return [];
+
+    const { data: projectsData } = await insforge.database
+      .from("projects")
+      .select("project_code, project_name, client, status, rid_country_code, created_at")
+      .in("project_code", assignedCodes)
+      .eq("status", "active")
+      .order("created_at", { ascending: false });
+
+    const projectsWithStats = await Promise.all(
+      (projectsData || []).map(async (project: any) => {
+        const { data: statsData } = await insforge.database
+          .from("respondents")
+          .select("status")
+          .eq("project_code", project.project_code)
+          .eq("supplier_code", supplierCode);
+
+        const rows = statsData || [];
+        return {
+          projectCode: project.project_code,
+          projectName: project.project_name,
+          client: project.client,
+          status: project.status,
+          countryCode: project.rid_country_code,
+          createdAt: project.created_at,
+          my_stats: {
+            total: rows.length,
+            complete: rows.filter((r: any) => r.status === "complete").length,
+            terminate: rows.filter((r: any) => r.status === "terminate" || r.status === "disqualified").length,
+            quotaFull: rows.filter((r: any) => r.status === "quotafull" || r.status === "quota_full").length,
+            security: rows.filter((r: any) => r.status === "security-terminate" || r.status === "security").length,
+            started: rows.filter((r: any) => r.status === "started").length,
+          }
+        };
+      })
+    );
+    return projectsWithStats;
+  }
+
+  async getSupplierProjectStats(supplierCode: string, projectCode: string): Promise<any> {
+    const { data: rowsData } = await insforge.database
+      .from("respondents")
+      .select("status, started_at")
+      .eq("project_code", projectCode)
+      .eq("supplier_code", supplierCode);
+
+    const rows = rowsData || [];
+    const todayStart = new Date(); 
+    todayStart.setHours(0,0,0,0);
+    const todayStartMs = todayStart.getTime();
+
+    const todayRows = rows.filter((r: any) => new Date(r.started_at).getTime() >= todayStartMs);
+
+    return {
+      project_code: projectCode,
+      supplier_code: supplierCode,
+      all_time: {
+        total: rows.length,
+        complete: rows.filter((r: any) => r.status === "complete").length,
+        terminate: rows.filter((r: any) => r.status === "terminate" || r.status === "disqualified").length,
+        quota_full: rows.filter((r: any) => r.status === "quotafull" || r.status === "quota_full").length,
+        security: rows.filter((r: any) => r.status === "security-terminate" || r.status === "security").length,
+        started: rows.filter((r: any) => r.status === "started").length,
+      },
+      today: {
+        total: todayRows.length,
+        complete: todayRows.filter((r: any) => r.status === "complete").length,
+        terminate: todayRows.filter((r: any) => r.status === "terminate" || r.status === "disqualified").length,
+        quota_full: todayRows.filter((r: any) => r.status === "quotafull" || r.status === "quota_full").length,
+        security: todayRows.filter((r: any) => r.status === "security-terminate" || r.status === "security").length,
+      }
+    };
   }
 
   async listSupplierUsers(): Promise<SupplierUser[]> {
@@ -1108,6 +1223,55 @@ export class DatabaseStorage implements IStorage {
       quotafull: quotafull || 0,
       security: security || 0
     };
+  }
+
+  async quickCreateProject(data: {
+    projectName: string;
+    projectCode: string;
+    surveyUrl: string;
+    countryCode: string;
+  }): Promise<{ project: Project; countrySurvey: CountrySurvey }> {
+    // 1. Create Project
+    const project = await this.createProject({
+      projectCode: data.projectCode,
+      projectName: data.projectName,
+      client: "Quick Create",
+      status: "active",
+      ridPrefix: "OI",
+      ridCountryCode: data.countryCode,
+      ridPadding: 4,
+      ridCounter: 1
+    });
+
+    // 2. Create Country Survey
+    const countrySurvey = await this.createCountrySurvey({
+      projectId: project.id,
+      projectCode: project.projectCode,
+      countryCode: data.countryCode,
+      surveyUrl: data.surveyUrl,
+      status: "active"
+    });
+
+    return { project, countrySurvey };
+  }
+
+  async batchCreateSupplierAssignments(assignments: InsertSupplierAssignment[]): Promise<void> {
+    if (assignments.length === 0) return;
+    
+    const dbAssignments = assignments.map(a => ({
+      project_code: a.projectCode,
+      country_code: a.countryCode,
+      supplier_id: a.supplierId,
+      generated_link: a.generatedLink,
+      status: a.status || "active",
+      notes: a.notes || null
+    }));
+
+    const { error } = await insforge.database.from("supplier_assignments").insert(dbAssignments);
+    if (error) {
+      console.error("Batch Create Supplier Assignments Error:", error);
+      throw error;
+    }
   }
 }
 

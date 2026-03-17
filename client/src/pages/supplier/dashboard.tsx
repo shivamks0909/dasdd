@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SupplierLayout } from "@/components/layout/supplier-layout";
 import { StatCard } from "@/components/stat-card";
@@ -14,7 +15,8 @@ import {
   ShieldAlert,
   ChevronLeft,
   ChevronRight,
-  Database
+  Database,
+  Loader2
 } from "lucide-react";
 import {
   Table,
@@ -30,7 +32,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useMemo } from "react";
 import { StatusBadge } from "@/components/status-badge";
 import type { Respondent, DashboardStats } from "@shared/schema";
 
@@ -64,6 +65,7 @@ export default function SupplierDashboardPage() {
     refetchInterval: 30000,
   });
 
+  const [isExporting, setIsExporting] = useState(false);
   const isLoading = statsLoading || responsesLoading;
 
   const countryMap: Record<string, string> = {
@@ -99,37 +101,36 @@ export default function SupplierDashboardPage() {
 
   const totalPages = Math.ceil(filteredResponses.length / parseInt(entriesPerPage));
 
-  const handleExport = () => {
-    if (!filteredResponses.length) return;
-    const headers = ["Project ID", "Parent ID", "Country", "PanellistID", "Respondent ID", "LOI (min)", "Start Time", "End Time", "Start IP", "End IP", "Status"];
-    const csvContent = [
-      headers.join(","),
-      ...filteredResponses.map((r, i) => [
-        r.projectCode,
-        "0",
-        countryMap[r.countryCode || "US"] || r.countryCode || "Global",
-        filteredResponses.length - i,
-        r.supplierRid || "",
-        (() => {
-          if (!r.startedAt || !r.completedAt) return "0";
-          return Math.floor((new Date(r.completedAt).getTime() - new Date(r.startedAt).getTime()) / 60000);
-        })(),
-        r.startedAt ? new Date(r.startedAt).toISOString() : "",
-        r.completedAt ? new Date(r.completedAt).toISOString() : "",
-        r.ipAddress || "",
-        r.ipAddress || "",
-        r.status
-      ].join(","))
-    ].join("\n");
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const response = await fetch("/api/supplier/responses/export-excel");
+      if (!response.ok) throw new Error("Export failed");
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `OpinionInsights_Supplier_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `respondent_report_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      toast({
+        title: "Export Success",
+        description: "Your Excel report has been generated successfully.",
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export Failed",
+        description: "Could not generate Excel report. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (isLoading) {
@@ -257,10 +258,20 @@ export default function SupplierDashboardPage() {
               </Button>
               <Button
                 onClick={handleExport}
-                className="h-10 bg-blue-600 hover:bg-blue-700 text-xs font-black px-6 ml-auto shadow-lg shadow-blue-500/20"
+                disabled={isExporting || !filteredResponses.length}
+                className="h-10 bg-blue-600 hover:bg-blue-700 text-xs font-black px-6 ml-auto shadow-lg shadow-blue-500/20 disabled:opacity-50"
               >
-                <Download className="w-3.5 h-3.5 mr-2" />
-                EXPORT
+                {isExporting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                    PREPARING...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5 mr-2" />
+                    EXPORT EXCEL
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>

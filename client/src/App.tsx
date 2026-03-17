@@ -20,6 +20,7 @@ import MockSurvey from "@/pages/MockSurvey";
 import RedirectDebugger from "@/pages/RedirectDebugger";
 import ProjectFormPage from "@/pages/admin/project-form";
 import ProjectsPage from "@/pages/admin/projects";
+import QuickCreatePage from "@/pages/admin/quick-create";
 import ResponsesPage from "@/pages/admin/responses";
 import ClientsPage from "@/pages/admin/clients";
 import SuppliersPage from "@/pages/admin/suppliers";
@@ -32,6 +33,7 @@ import { SupplierProtectedRoute } from "@/components/supplier-protected-route";
 import SupplierLoginPage from "@/pages/supplier/login";
 import SupplierDashboardPage from "@/pages/supplier/dashboard";
 import SupplierProjectsPage from "@/pages/supplier/projects";
+import SupplierProjectDetailPage from "@/pages/supplier/project-detail";
 import { Loader2 } from "lucide-react";
 
 // New Public Landing Pages
@@ -92,6 +94,9 @@ function Router() {
       <Route path="/admin/projects">
         <ProtectedRoute path="/admin/projects" component={ProjectsPage} />
       </Route>
+      <Route path="/admin/projects/quick-create">
+        <ProtectedRoute path="/admin/projects/quick-create" component={QuickCreatePage} />
+      </Route>
       <Route path="/admin/responses">
         <ProtectedRoute path="/admin/responses" component={ResponsesPage} />
       </Route>
@@ -150,6 +155,13 @@ function Router() {
         <SupplierProtectedRoute>
           <SupplierProjectsPage />
         </SupplierProtectedRoute>
+      </Route>
+      <Route path="/supplier/projects/:code">
+        {(params) => (
+          <SupplierProtectedRoute>
+            <SupplierProjectDetailPage code={params.code} />
+          </SupplierProtectedRoute>
+        )}
       </Route>
 
       <Route component={NotFound} />

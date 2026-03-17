@@ -16,11 +16,11 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function ToolLinksPage() {
   const { toast } = useToast();
-  const [baseUrl, setBaseUrl] = useState("");
+  const [projectCode, setProjectCode] = useState("PRJXXXX");
 
-  useEffect(() => {
-    setBaseUrl(window.location.origin);
-  }, []);
+  // Determine base URL: process.env exists in some setups, import.meta.env in Vite.
+  // We use the exact URL requested by the user.
+  const baseUrl = "https://track.opinioninsights.in";
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -34,7 +34,7 @@ export default function ToolLinksPage() {
     {
       title: "Complete Redirect",
       description: "Redirect for successful survey completions",
-      url: `${baseUrl}/complete?oi_session=[UID]`,
+      url: `${baseUrl}/pages/complete?pid=${projectCode}&uid=[UID]`,
       icon: CheckCircle2,
       color: "text-emerald-500",
       bgColor: "bg-emerald-50"
@@ -42,7 +42,7 @@ export default function ToolLinksPage() {
     {
       title: "Terminate Redirect",
       description: "Redirect for disqualified respondents",
-      url: `${baseUrl}/terminate?oi_session=[UID]`,
+      url: `${baseUrl}/pages/terminate?pid=${projectCode}&uid=[UID]`,
       icon: XCircle,
       color: "text-rose-500",
       bgColor: "bg-rose-50"
@@ -50,7 +50,7 @@ export default function ToolLinksPage() {
     {
       title: "Quotafull Redirect",
       description: "Redirect when project quotas are full",
-      url: `${baseUrl}/quotafull?oi_session=[UID]`,
+      url: `${baseUrl}/pages/quotafull?pid=${projectCode}&uid=[UID]`,
       icon: Globe,
       color: "text-orange-500",
       bgColor: "bg-orange-50"
@@ -58,7 +58,7 @@ export default function ToolLinksPage() {
     {
       title: "Security Terminate",
       description: "Redirect for fraud or security violations",
-      url: `${baseUrl}/security-terminate?oi_session=[UID]`,
+      url: `${baseUrl}/pages/security?pid=${projectCode}&uid=[UID]`,
       icon: ShieldAlert,
       color: "text-red-700",
       bgColor: "bg-red-50"
@@ -66,7 +66,7 @@ export default function ToolLinksPage() {
     {
       title: "Duplicate IP",
       description: "Redirect for repeated IP address attempts",
-      url: `${baseUrl}/duplicate-ip?oi_session=[UID]`,
+      url: `${baseUrl}/pages/duplicate?pid=${projectCode}&uid=[UID]`,
       icon: ShieldAlert,
       color: "text-amber-600",
       bgColor: "bg-amber-50"
@@ -74,7 +74,7 @@ export default function ToolLinksPage() {
     {
       title: "Duplicate String",
       description: "Redirect for repeated browser signatures",
-      url: `${baseUrl}/duplicate-string?oi_session=[UID]`,
+      url: `${baseUrl}/pages/duplicate?pid=${projectCode}&uid=[UID]`,
       icon: Lock,
       color: "text-slate-600",
       bgColor: "bg-slate-50"
@@ -88,6 +88,16 @@ export default function ToolLinksPage() {
         <div>
           <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase italic">Official Redirects</h1>
           <p className="text-sm text-slate-400 mt-1 font-bold">Copy these links for client-side setup and integration</p>
+        </div>
+        <div className="flex items-center gap-2 bg-white/60 p-2 rounded-xl border border-slate-200/50 shadow-sm">
+          <span className="text-[10px] font-black uppercase text-slate-400 pl-2">Project Code:</span>
+          <input 
+            type="text" 
+            value={projectCode}
+            onChange={(e) => setProjectCode(e.target.value)}
+            placeholder="e.g. PRJ4721"
+            className="w-32 h-8 px-3 text-xs font-mono font-bold text-slate-700 bg-white border border-slate-200 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all uppercase"
+          />
         </div>
       </div>
 

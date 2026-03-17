@@ -49,13 +49,14 @@ export default function ProjectsPage() {
           <h1 className="text-3xl font-black tracking-tight text-slate-900">Research Campaigns</h1>
           <p className="text-sm text-slate-400 mt-1 font-bold">Orchestrate and monitor your active survey assets</p>
         </div>
-        <button
+        <GlassButton
+          variant="primary"
           onClick={() => setLocation("/admin/projects/new")}
-          className="bg-primary text-white hover:bg-primary/90 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]"
+          className="flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
           Create Campaign
-        </button>
+        </GlassButton>
       </div>
 
       {isLoading ? (
@@ -121,13 +122,15 @@ export default function ProjectsPage() {
                   </div>
 
                   <div className="flex items-center justify-between pt-2">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setLocation(`/admin/projects/${project.projectCode}`)}
-                      className="flex items-center gap-2 text-slate-400 hover:text-primary transition-all font-black text-[10px] uppercase tracking-widest group/btn"
+                      className="flex items-center gap-2 text-slate-400 hover:text-primary transition-all font-black text-[10px] uppercase tracking-widest group/btn h-auto px-0"
                     >
                       Analyze Hub
                       <BarChart3 className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
-                    </button>
+                    </Button>
                     <div className="flex gap-2">
                       <button
                         onClick={() => setLocation(`/admin/link-generator?project=${project.projectCode}`)}

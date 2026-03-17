@@ -33,8 +33,8 @@ export function SupplierLayout({ children }: SupplierLayoutProps) {
               <Square className="w-6 h-6 text-[#007bff] fill-[#007bff] rotate-45" />
             </div>
             <div className="leading-none">
-              <span className="block text-[16px] font-bold text-slate-800">Global Matrix</span>
-              <span className="block text-[11px] font-medium text-slate-500 uppercase tracking-wider">SURVEY</span>
+              <span className="block text-[16px] font-bold text-slate-800">Opinion Insights</span>
+              <span className="block text-[11px] font-medium text-slate-500 uppercase tracking-wider">SUPPLIER</span>
             </div>
           </div>
           <button className="text-slate-500 hover:text-slate-800 transition-colors">

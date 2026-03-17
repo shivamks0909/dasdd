@@ -1,13 +1,63 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+
 export function BackgroundPaths() {
-    return (
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden opacity-40">
-            <svg className="absolute w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <path d="M0,0 Q50,10 100,0 T200,0" fill="none" stroke="rgba(59, 130, 246, 0.05)" strokeWidth="0.1" />
-                <path d="M0,20 Q50,30 100,20 T200,20" fill="none" stroke="rgba(59, 130, 246, 0.03)" strokeWidth="0.1" />
-                <path d="M0,40 Q50,50 100,40 T200,40" fill="none" stroke="rgba(59, 130, 246, 0.05)" strokeWidth="0.1" />
-                <path d="M0,60 Q50,70 100,60 T200,60" fill="none" stroke="rgba(59, 130, 246, 0.03)" strokeWidth="0.1" />
-                <path d="M0,80 Q50,90 100,80 T200,80" fill="none" stroke="rgba(59, 130, 246, 0.05)" strokeWidth="0.1" />
-            </svg>
-        </div>
-    );
+  const paths = [
+    {
+      d: "M-100,50 Q200,10 500,50 T1100,50",
+      duration: 20,
+      stroke: "rgba(59, 130, 246, 0.08)",
+    },
+    {
+      d: "M-100,80 Q300,40 600,80 T1100,80",
+      duration: 25,
+      stroke: "rgba(59, 130, 246, 0.05)",
+    },
+    {
+      d: "M-100,20 Q400,60 700,20 T1100,20",
+      duration: 18,
+      stroke: "rgba(59, 130, 246, 0.07)",
+    },
+    {
+      d: "M-100,100 Q100,10 400,100 T1100,100",
+      duration: 30,
+      stroke: "rgba(59, 130, 246, 0.04)",
+    },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-slate-50/50">
+      <svg
+        className="absolute w-full h-full"
+        viewBox="0 0 1000 100"
+        preserveAspectRatio="none"
+      >
+        {paths.map((path, i) => (
+          <motion.path
+            key={i}
+            d={path.d}
+            fill="none"
+            stroke={path.stroke}
+            strokeWidth="0.5"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{
+              pathLength: [0, 1, 0],
+              opacity: [0, 1, 0],
+              x: [0, 50, 0],
+            }}
+            transition={{
+              duration: path.duration,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </svg>
+      {/* Soft gradient overlays for depth */}
+      <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-white/80" />
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/10 to-transparent" />
+    </div>
+  );
 }

@@ -12,25 +12,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
-import { Search, RotateCcw, Copy, ExternalLink, Building2 } from "lucide-react";
+import { Search, RotateCcw, Copy, ExternalLink, BarChart2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Project } from "@shared/schema";
+import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 
 export default function SupplierProjectsPage() {
   const [search, setSearch] = useState("");
   const { toast } = useToast();
 
-  const { data: projects, isLoading } = useQuery<Project[]>({
+  const { data: projects, isLoading } = useQuery<any[]>({
     queryKey: ["/api/supplier/projects"], 
   });
 
   const filteredProjects = useMemo(() => {
     if (!projects) return [];
-    return projects.filter(p => 
-      p.projectName.toLowerCase().includes(search.toLowerCase()) ||
-      p.projectCode.toLowerCase().includes(search.toLowerCase())
-    );
+    return projects.filter(p => {
+      const name = p.project_name || p.projectName || "";
+      const code = p.project_code || p.projectCode || "";
+      return name.toLowerCase().includes(search.toLowerCase()) || code.toLowerCase().includes(search.toLowerCase());
+    });
   }, [projects, search]);
 
   const copyToClipboard = (text: string) => {
@@ -42,8 +43,9 @@ export default function SupplierProjectsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <SupplierLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
         <h2 className="text-[24px] font-normal text-slate-700">Assigned Projects</h2>
       </div>
 
@@ -79,6 +81,7 @@ export default function SupplierProjectsPage() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="text-[13px] font-bold text-slate-800 h-12">Project Name</TableHead>
                   <TableHead className="text-[13px] font-bold text-slate-800 h-12">Project Code</TableHead>
+                  <TableHead className="text-[13px] font-bold text-slate-800 h-12">Stats (Complete / Total)</TableHead>
                   <TableHead className="text-[13px] font-bold text-slate-800 h-12">Status</TableHead>
                   <TableHead className="text-[13px] font-bold text-slate-800 h-12">Created At</TableHead>
                   <TableHead className="text-[13px] font-bold text-slate-800 h-12 text-right">Actions</TableHead>
@@ -98,10 +101,20 @@ export default function SupplierProjectsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredProjects.map((p, i) => (
-                    <TableRow key={p.id} className={cn("border-b border-slate-100 transition-colors", i % 2 === 0 ? "bg-[#f9f9f9]" : "bg-white")}>
-                      <TableCell className="py-4 text-[13px] font-medium text-slate-700">{p.projectName}</TableCell>
-                      <TableCell className="py-4 text-[13px] text-slate-600 font-mono">{p.projectCode}</TableCell>
+                  filteredProjects.map((p, i) => {
+                    const name = p.project_name || p.projectName;
+                    const code = p.project_code || p.projectCode;
+                    return (
+                    <TableRow key={p.id || code} className={cn("border-b border-slate-100 transition-colors", i % 2 === 0 ? "bg-[#f9f9f9]" : "bg-white")}>
+                      <TableCell className="py-4 text-[13px] font-medium text-slate-700">
+                        <Link href={`/supplier/projects/${code}`} className="text-blue-600 hover:underline">{name}</Link>
+                      </TableCell>
+                      <TableCell className="py-4 text-[13px] text-slate-600 font-mono">{code}</TableCell>
+                      <TableCell className="py-4 text-[13px] text-slate-600">
+                        {p.my_stats ? (
+                          <span className="font-semibold text-emerald-600">{p.my_stats.complete}</span>
+                        ) : "—"} / {p.my_stats?.total || 0}
+                      </TableCell>
                       <TableCell className="py-4">
                         <span className={cn("px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase", 
                           p.status === 'active' ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"
@@ -110,7 +123,7 @@ export default function SupplierProjectsPage() {
                         </span>
                       </TableCell>
                       <TableCell className="py-4 text-[12px] text-slate-500">
-                        {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—"}
+                        {p.created_at || p.createdAt ? new Date(p.created_at || p.createdAt).toLocaleDateString() : "—"}
                       </TableCell>
                       <TableCell className="py-4 text-right">
                         <div className="flex justify-end gap-2">
@@ -118,25 +131,25 @@ export default function SupplierProjectsPage() {
                             variant="outline" 
                             size="sm"
                             className="h-8 border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200"
-                            onClick={() => copyToClipboard(`${window.location.origin}/t/${p.projectCode}?sup={SUPPLIER_CODE}&uid={RESPONDENT_ID}`)}
+                            onClick={() => copyToClipboard(`${window.location.origin}/t/${code}?sup={SUPPLIER_CODE}&uid={RESPONDENT_ID}`)}
                           >
                             <Copy className="w-3.5 h-3.5 mr-1.5" />
                             Link
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="h-8 border-slate-200 text-slate-600"
-                            asChild
-                          >
-                            <a href={`/t/${p.projectCode}?sup=TEST&uid=TEST_USER`} target="_blank" rel="noreferrer">
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                          </Button>
+                          <Link href={`/supplier/projects/${code}`}>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="h-8 border-slate-200 text-slate-600"
+                            >
+                              <BarChart2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </Link>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -144,5 +157,6 @@ export default function SupplierProjectsPage() {
         </CardContent>
       </Card>
     </div>
+    </SupplierLayout>
   );
 }

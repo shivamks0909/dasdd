@@ -114,7 +114,7 @@ export async function generateExcelReport(params: {
     terminate: responses.filter(r => r.status === 'terminate').length,
     quotafull: responses.filter(r => r.status === 'quotafull').length,
     security: responses.filter(r => r.status === 'security' || r.status === 'fraud' || r.status === 'security-terminate').length,
-    fake: responses.filter(r => (r as any).isFakeSuspected || r.status === 'fraud').length,
+    fake: responses.filter(r => r.status === 'fraud').length,
     s2sVerified: responses.filter(r => r.s2sVerified).length,
   };
 

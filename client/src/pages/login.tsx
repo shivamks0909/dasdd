@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/form";
 import { BarChart3, Loader2, ShieldCheck, User, Lock } from "lucide-react";
 import { BackgroundPaths } from "@/components/ui/background-paths";
+import { GlassButton } from "@/components/ui/glass-button";
+import { PixelTrail } from "@/components/ui/pixel-trail";
+import { useScreenSize } from "@/components/hooks/use-screen-size";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -27,6 +30,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const screenSize = useScreenSize();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -69,6 +73,16 @@ export default function LoginPage() {
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-slate-50">
       <BackgroundPaths />
+      
+      {/* Interactive Pixel Trail Layer */}
+      <div className="absolute inset-0 z-0 opacity-40">
+        <PixelTrail
+          pixelSize={screenSize.lessThan("md") ? 32 : 56}
+          fadeDuration={600}
+          delay={0}
+          pixelClassName="rounded-full bg-primary/40"
+        />
+      </div>
       <div className="relative z-10 w-full max-w-[440px] mx-auto px-6">
         <div className="flex flex-col items-center mb-10">
           <div className="group relative">
@@ -145,18 +159,14 @@ export default function LoginPage() {
                     </FormItem>
                   )}
                 />
-                <button
+                <GlassButton
                   type="submit"
-                  className="w-full h-16 bg-slate-900 hover:bg-black text-white rounded-3xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl shadow-slate-200 transition-all flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 disabled:opacity-50 mt-4"
-                  disabled={loginMutation.isPending}
+                  variant="primary"
+                  className="w-full h-16 rounded-3xl mt-4"
+                  isLoading={loginMutation.isPending}
                 >
-                  {loginMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin text-white" />
-                      Decrypting...
-                    </>
-                  ) : "Initialize Login"}
-                </button>
+                  Initialize Login
+                </GlassButton>
               </form>
             </Form>
           </CardContent>

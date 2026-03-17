@@ -1,4 +1,4 @@
-import { AppSidebar } from "@/components/layout/app-sidebar";
+import { ModernSideBar } from "@/components/ui/modern-side-bar";
 import { useAuth } from "@/hooks/use-auth";
 import { WavyBackground } from "@/components/ui/wavy-background";
 import { PixelTrail } from "@/components/ui/pixel-trail";
@@ -36,7 +36,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Interactive Pixel Trail — follows the mouse */}
       <PixelTrailOverlay />
 
-      <AppSidebar username={user?.username} />
+      <ModernSideBar username={user?.username} />
 
       <div className="flex flex-col flex-1 min-w-0 relative z-10">
         <header className="flex items-center gap-2 p-6 border-b border-slate-200/60 sticky top-0 z-40 bg-white/40 backdrop-blur-md">

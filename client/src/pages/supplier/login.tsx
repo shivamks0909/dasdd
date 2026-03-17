@@ -7,8 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, LogIn, ShieldCheck } from "lucide-react";
+import { PixelTrail } from "@/components/ui/pixel-trail";
+import { useScreenSize } from "@/components/hooks/use-screen-size";
 
 export default function SupplierLoginPage() {
+  const screenSize = useScreenSize();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [username, setUsername] = useState("");
@@ -26,7 +29,7 @@ export default function SupplierLoginPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/supplier/auth/me"] });
       toast({
         title: "Login successful",
-        description: "Welcome back to Global Matrix Survey",
+        description: "Welcome back",
       });
       setLocation("/supplier/dashboard");
     },
@@ -46,11 +49,21 @@ export default function SupplierLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f4f7f6] font-sans">
-      <div className="w-full max-w-[500px] mb-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 font-sans relative overflow-hidden">
+      {/* Interactive Pixel Trail Background */}
+      <div className="absolute inset-0 z-0 opacity-40">
+        <PixelTrail
+          pixelSize={screenSize.lessThan("md") ? 32 : 56}
+          fadeDuration={600}
+          delay={0}
+          pixelClassName="rounded-full bg-blue-400/40"
+        />
+      </div>
+
+      <div className="w-full max-w-[500px] mb-8 relative z-10">
         <Card className="border-none shadow-[0_4px_15px_rgba(0,0,0,0.1)] rounded-sm">
           <CardHeader className="pt-10 pb-4">
-            <CardTitle className="text-[28px] font-normal text-slate-800 text-center">Login</CardTitle>
+            <CardTitle className="text-[28px] font-normal text-slate-800 text-center">Supplier Login</CardTitle>
           </CardHeader>
           <CardContent className="px-12 pb-12">
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -92,7 +105,7 @@ export default function SupplierLoginPage() {
       
       <footer className="fixed bottom-0 w-full py-4 bg-white border-t border-slate-200">
         <div className="text-right px-12 text-[12px] text-slate-500">
-          © 2026, Global Matrix Survey
+          © 2026, Opinion Insights
         </div>
       </footer>
     </div>

@@ -231,6 +231,7 @@ const mapCountrySurvey = (data)=>({
     });
 const mapSupplier = (data)=>({
         ...data,
+        passwordHash: data.password_hash,
         completeUrl: data.complete_url,
         terminateUrl: data.terminate_url,
         quotafullUrl: data.quotafull_url,
@@ -253,7 +254,27 @@ const mapRespondent = (data)=>({
         completedAt: data.completed_at ? new Date(data.completed_at) : undefined,
         ipAddress: data.ip_address,
         userAgent: data.user_agent,
-        surveyUrl: data.survey_url
+        surveyUrl: data.survey_url,
+        redirectUrl: data.redirect_url,
+        verifyHash: data.verify_hash
+    });
+const mapSupplierUser = (data)=>({
+        ...data,
+        passwordHash: data.password_hash,
+        supplierId: data.supplier_id,
+        supplierCode: data.supplier_code,
+        isActive: data.is_active,
+        lastLogin: data.last_login ? new Date(data.last_login) : undefined,
+        createdAt: data.created_at ? new Date(data.created_at) : undefined,
+        createdBy: data.created_by
+    });
+const mapSupplierProjectAccess = (data)=>({
+        ...data,
+        userId: data.user_id,
+        projectId: data.project_id,
+        projectCode: data.project_code,
+        assignedAt: data.assigned_at ? new Date(data.assigned_at) : undefined,
+        assignedBy: data.assigned_by
     });
 class DatabaseStorage {
     async getAdminByUsername(username) {
@@ -400,7 +421,8 @@ class DatabaseStorage {
             complete_url: supplier.completeUrl,
             terminate_url: supplier.terminateUrl,
             quotafull_url: supplier.quotafullUrl,
-            security_url: supplier.securityUrl
+            security_url: supplier.securityUrl,
+            password_hash: supplier.passwordHash || null
         };
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("suppliers").insert([
             dbSupplier
@@ -416,11 +438,17 @@ class DatabaseStorage {
         if (supplier.terminateUrl !== undefined) dbSupplier.terminate_url = supplier.terminateUrl;
         if (supplier.quotafullUrl !== undefined) dbSupplier.quotafull_url = supplier.quotafullUrl;
         if (supplier.securityUrl !== undefined) dbSupplier.security_url = supplier.securityUrl;
+        if (supplier.passwordHash !== undefined) dbSupplier.password_hash = supplier.passwordHash;
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("suppliers").update(dbSupplier).eq("id", id).select().single();
         return data ? mapSupplier(data) : undefined;
     }
     async deleteSupplier(id) {
         await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("suppliers").delete().eq("id", id);
+    }
+    async updateSupplierPassword(id, hash) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("suppliers").update({
+            password_hash: hash
+        }).eq("id", id);
     }
     // Respondents
     async createRespondent(respondent) {
@@ -437,7 +465,8 @@ class DatabaseStorage {
             s2s_token: respondent.s2sToken,
             ip_address: respondent.ipAddress,
             user_agent: respondent.userAgent,
-            survey_url: respondent.surveyUrl || null
+            survey_url: respondent.surveyUrl || respondent.surveyUrl || null,
+            verify_hash: respondent.verifyHash || respondent.verifyHash || null
         };
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").insert([
             dbRespondent
@@ -449,11 +478,15 @@ class DatabaseStorage {
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").eq("oi_session", oiSession).maybeSingle();
         return data ? mapRespondent(data) : undefined;
     }
-    async updateRespondentStatus(oiSession, status) {
-        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").update({
+    async updateRespondentStatus(oiSession, status, redirectUrl) {
+        const updateData = {
             status,
             completed_at: status !== 'started' ? new Date() : null
-        }).eq("oi_session", oiSession).select().single();
+        };
+        if (redirectUrl) {
+            updateData.redirect_url = redirectUrl;
+        }
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").update(updateData).eq("oi_session", oiSession).select().single();
         return data ? mapRespondent(data) : undefined;
     }
     async checkDuplicateRespondent(projectCode, supplierCode, supplierRid) {
@@ -468,6 +501,27 @@ class DatabaseStorage {
             ascending: false
         });
         return (data || []).map(mapRespondent);
+    }
+    async getEnrichedRespondents(limit = 100) {
+        const { data: respondents } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").order("started_at", {
+            ascending: false
+        }).limit(limit);
+        if (!respondents) return [];
+        const { data: suppliers } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("suppliers").select("id, name, code");
+        const supplierMap = new Map((suppliers || []).map((s)=>[
+                s.code,
+                s.name
+            ]));
+        const { data: projects } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("projects").select("project_code, project_name");
+        const projectMap = new Map((projects || []).map((p)=>[
+                p.project_code,
+                p.project_name
+            ]));
+        return respondents.map((r)=>({
+                ...mapRespondent(r),
+                supplierName: r.supplier_code ? supplierMap.get(r.supplier_code) || "Direct Traffic" : "Direct Traffic",
+                projectName: projectMap.get(r.project_code) || r.project_code
+            }));
     }
     async getRespondentsByProject(projectCode) {
         const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").eq("project_code", projectCode).order("started_at", {
@@ -500,10 +554,17 @@ class DatabaseStorage {
     }
     // Internal stats calculation
     async getDashboardStats() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString();
         const { count: totalProjects } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("projects").select("*", {
             count: 'exact',
             head: true
         });
+        const { count: activeProjects } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("projects").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "active");
         const { count: totalRespondents } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
             count: 'exact',
             head: true
@@ -524,13 +585,52 @@ class DatabaseStorage {
             count: 'exact',
             head: true
         }).eq("status", "security-terminate");
+        // Today's stats
+        const { count: clicksToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).gte("started_at", todayStr);
+        const { count: completesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "complete").gte("started_at", todayStr);
+        const { count: quotafullToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "quotafull").gte("started_at", todayStr);
+        const { count: terminatesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "terminate").gte("started_at", todayStr);
+        const { count: securityToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "security-terminate").gte("started_at", todayStr);
+        const { count: duplicatesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "duplicate").gte("started_at", todayStr);
+        const { count: inProgressToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("status", "started").gte("started_at", todayStr);
+        const conversionRateToday = clicksToday && clicksToday > 0 ? ((completesToday || 0) / clicksToday * 100).toFixed(1) + "%" : "0%";
         return {
             totalProjects: totalProjects || 0,
+            activeProjects: activeProjects || 0,
             totalRespondents: totalRespondents || 0,
             completes: completes || 0,
             terminates: terminates || 0,
             quotafulls: quotafulls || 0,
             securityTerminates: securityTerminates || 0,
+            clicksToday: clicksToday || 0,
+            completesToday: completesToday || 0,
+            quotafullToday: quotafullToday || 0,
+            terminatesToday: terminatesToday || 0,
+            inProgressToday: inProgressToday || 0,
+            duplicatesToday: duplicatesToday || 0,
+            securityToday: securityToday || 0,
+            conversionRateToday,
             activityData: []
         };
     }
@@ -782,6 +882,234 @@ class DatabaseStorage {
             };
         });
     }
+    // Supplier Portal Implementation
+    async getSupplierUserByUsername(username) {
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_users").select("*").eq("username", username).maybeSingle();
+        return data ? mapSupplierUser(data) : undefined;
+    }
+    async getSupplierUserById(id) {
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_users").select("*").eq("id", id).maybeSingle();
+        return data ? mapSupplierUser(data) : undefined;
+    }
+    async getSupplierProjectAccess(userId) {
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_project_access").select("*").eq("user_id", userId);
+        return (data || []).map(mapSupplierProjectAccess);
+    }
+    async getAssignedProjects(userId) {
+        // Join project access with projects table
+        const access = await this.getSupplierProjectAccess(userId);
+        if (access.length === 0) return [];
+        const projectIds = access.map((a)=>a.projectId);
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("projects").select("*").in("id", projectIds);
+        return (data || []).map(mapProject);
+    }
+    async createSupplierUser(user) {
+        const dbUser = {
+            username: user.username,
+            password_hash: user.passwordHash,
+            supplier_id: user.supplierId,
+            supplier_code: user.supplierCode,
+            is_active: user.isActive,
+            created_by: user.createdBy
+        };
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_users").insert([
+            dbUser
+        ]).select().single();
+        if (!data) throw new Error("Failed to create supplier user");
+        return mapSupplierUser(data);
+    }
+    async updateSupplierUser(id, user) {
+        const dbUser = {};
+        if (user.username) dbUser.username = user.username;
+        if (user.passwordHash) dbUser.password_hash = user.passwordHash;
+        if (user.supplierId) dbUser.supplier_id = user.supplierId;
+        if (user.supplierCode) dbUser.supplier_code = user.supplierCode;
+        if (user.isActive !== undefined) dbUser.is_active = user.isActive;
+        if (user.lastLogin) dbUser.last_login = user.lastLogin;
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_users").update(dbUser).eq("id", id).select().single();
+        return data ? mapSupplierUser(data) : undefined;
+    }
+    async getSupplierDashboardStats(userId, supplierCode) {
+        const access = await this.getSupplierProjectAccess(userId);
+        const projectCodes = access.map((a)=>a.projectCode);
+        if (projectCodes.length === 0) {
+            return {
+                totalProjects: 0,
+                activeProjects: 0,
+                totalRespondents: 0,
+                completes: 0,
+                terminates: 0,
+                quotafulls: 0,
+                securityTerminates: 0,
+                clicksToday: 0,
+                completesToday: 0,
+                quotafullToday: 0,
+                terminatesToday: 0,
+                inProgressToday: 0,
+                duplicatesToday: 0,
+                securityToday: 0,
+                conversionRateToday: "0%",
+                activityData: []
+            };
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString();
+        const { count: totalProjects } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_project_access").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("user_id", userId);
+        // Cumulative All-time stats
+        const { count: totalRespondents } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes);
+        const { count: completes } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "complete");
+        const { count: terminates } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "terminate");
+        const { count: quotafulls } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "quotafull");
+        const { count: securityTerminates } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "security-terminate");
+        // Today's stats
+        const { count: clicksToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).gte("started_at", todayStr);
+        const { count: completesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "complete").gte("started_at", todayStr);
+        const { count: quotafullToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "quotafull").gte("started_at", todayStr);
+        const { count: terminatesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "terminate").gte("started_at", todayStr);
+        const { count: inProgressToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "started").gte("started_at", todayStr);
+        const { count: securityToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "security-terminate").gte("started_at", todayStr);
+        const { count: duplicatesToday } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).in("project_code", projectCodes).eq("status", "duplicate").gte("started_at", todayStr);
+        const conversionRateToday = clicksToday && clicksToday > 0 ? ((completesToday || 0) / clicksToday * 100).toFixed(1) + "%" : "0%";
+        return {
+            totalProjects: totalProjects || 0,
+            activeProjects: totalProjects || 0,
+            totalRespondents: totalRespondents || 0,
+            completes: completes || 0,
+            terminates: terminates || 0,
+            quotafulls: quotafulls || 0,
+            securityTerminates: securityTerminates || 0,
+            clicksToday: clicksToday || 0,
+            completesToday: completesToday || 0,
+            quotafullToday: quotafullToday || 0,
+            terminatesToday: terminatesToday || 0,
+            inProgressToday: inProgressToday || 0,
+            duplicatesToday: duplicatesToday || 0,
+            securityToday: securityToday || 0,
+            conversionRateToday,
+            activityData: []
+        };
+    }
+    async getSupplierRespondents(supplierCode, projectCodes) {
+        if (projectCodes.length === 0) return [];
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*").eq("supplier_code", supplierCode).in("project_code", projectCodes).order("started_at", {
+            ascending: false
+        });
+        return (data || []).map(mapRespondent);
+    }
+    async listSupplierUsers() {
+        const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_users").select("*").order("created_at", {
+            ascending: false
+        });
+        return (data || []).map(mapSupplierUser);
+    }
+    async listSupplierProjectAccess() {
+        const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_project_access").select(`
+        *,
+        supplier_users (username),
+        projects (project_name)
+      `).order("assigned_at", {
+            ascending: false
+        });
+        if (error) {
+            console.error("Error listing supplier project access:", error);
+            return [];
+        }
+        return (data || []).map((a)=>({
+                ...mapSupplierProjectAccess(a),
+                username: a.supplier_users?.username,
+                projectName: a.projects?.project_name
+            }));
+    }
+    async assignProjectToSupplier(access) {
+        const dbAccess = {
+            user_id: access.userId,
+            project_id: access.projectId,
+            project_code: access.projectCode,
+            assigned_by: access.assignedBy
+        };
+        const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_project_access").insert([
+            dbAccess
+        ]).select().single();
+        if (error) {
+            console.error("DB insert error for supplier_project_access:", error);
+            throw error;
+        }
+        if (!data) throw new Error("Failed to assign project to supplier");
+        return mapSupplierProjectAccess(data);
+    }
+    async removeProjectFromSupplier(id) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_project_access").delete().eq("id", id);
+    }
+    async deleteSupplierUser(id) {
+        await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("supplier_users").delete().eq("id", id);
+    }
+    async getSupplierStatsOverview(supplierCode) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString();
+        const { count: completed } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).eq("status", "complete").gte("started_at", todayStr);
+        const { count: disqualified } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).eq("status", "terminate").gte("started_at", todayStr);
+        const { count: quotafull } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).eq("status", "quotafull").gte("started_at", todayStr);
+        const { count: security } = await __TURBOPACK__imported__module__$5b$project$5d2f$server$2f$insforge$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["insforge"].database.from("respondents").select("*", {
+            count: 'exact',
+            head: true
+        }).eq("supplier_code", supplierCode).eq("status", "security-terminate").gte("started_at", todayStr);
+        return {
+            completed: completed || 0,
+            disqualified: disqualified || 0,
+            quotafull: quotafull || 0,
+            security: security || 0
+        };
+    }
 }
 const storage = new DatabaseStorage();
 async function seedAdmin(storage) {
@@ -881,8 +1209,12 @@ __turbopack_context__.s([
     ()=>insertS2sLogSchema,
     "insertSupplierAssignmentSchema",
     ()=>insertSupplierAssignmentSchema,
+    "insertSupplierProjectAccessSchema",
+    ()=>insertSupplierProjectAccessSchema,
     "insertSupplierSchema",
     ()=>insertSupplierSchema,
+    "insertSupplierUserSchema",
+    ()=>insertSupplierUserSchema,
     "projectS2sConfig",
     ()=>projectS2sConfig,
     "projectS2sConfigSchema",
@@ -903,8 +1235,16 @@ __turbopack_context__.s([
     ()=>supplierAssignmentSchema,
     "supplierAssignments",
     ()=>supplierAssignments,
+    "supplierProjectAccess",
+    ()=>supplierProjectAccess,
+    "supplierProjectAccessSchema",
+    ()=>supplierProjectAccessSchema,
     "supplierSchema",
     ()=>supplierSchema,
+    "supplierUserSchema",
+    ()=>supplierUserSchema,
+    "supplierUsers",
+    ()=>supplierUsers,
     "suppliers",
     ()=>suppliers,
     "updateSupplierSchema",
@@ -966,10 +1306,11 @@ const suppliers = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modul
     id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$uuid$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["uuid"])("id").primaryKey().defaultRandom(),
     name: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("name").notNull(),
     code: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("code").notNull().unique(),
+    passwordHash: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("password_hash"),
     completeUrl: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("complete_url"),
     terminateUrl: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("terminate_url"),
     quotafullUrl: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("quotafull_url"),
-    security_url: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("security_url"),
+    securityUrl: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("security_url"),
     createdAt: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$timestamp$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["timestamp"])("created_at").defaultNow()
 });
 const respondents = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$table$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["pgTable"])("respondents", {
@@ -992,7 +1333,9 @@ const respondents = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_mod
     completedAt: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$timestamp$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["timestamp"])("completed_at"),
     ipAddress: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("ip_address"),
     userAgent: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("user_agent"),
-    surveyUrl: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("survey_url")
+    surveyUrl: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("survey_url"),
+    redirectUrl: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("redirect_url"),
+    verifyHash: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("verify_hash")
 });
 const activityLogs = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$table$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["pgTable"])("activity_logs", {
     id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$uuid$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["uuid"])("id").primaryKey().defaultRandom(),
@@ -1031,6 +1374,31 @@ const projectS2sConfig = (0, __TURBOPACK__imported__module__$5b$project$5d2f$nod
     s2sSecret: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("s2s_secret").notNull(),
     requireS2S: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$boolean$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["boolean"])("require_s2s").default(true),
     createdAt: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$timestamp$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["timestamp"])("created_at").defaultNow()
+});
+const supplierUsers = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$table$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["pgTable"])("supplier_users", {
+    id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$uuid$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["uuid"])("id").primaryKey().defaultRandom(),
+    username: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("username").notNull().unique(),
+    passwordHash: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("password_hash").notNull(),
+    supplierId: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$uuid$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["uuid"])("supplier_id").references(()=>suppliers.id, {
+        onDelete: 'cascade'
+    }),
+    supplierCode: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("supplier_code").notNull(),
+    isActive: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$boolean$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["boolean"])("is_active").default(true),
+    lastLogin: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$timestamp$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["timestamp"])("last_login"),
+    createdAt: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$timestamp$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["timestamp"])("created_at").defaultNow(),
+    createdBy: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("created_by")
+});
+const supplierProjectAccess = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$table$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["pgTable"])("supplier_project_access", {
+    id: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$uuid$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["uuid"])("id").primaryKey().defaultRandom(),
+    userId: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$uuid$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["uuid"])("user_id").references(()=>supplierUsers.id, {
+        onDelete: 'cascade'
+    }),
+    projectId: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$uuid$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["uuid"])("project_id").references(()=>projects.id, {
+        onDelete: 'cascade'
+    }),
+    projectCode: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("project_code").notNull(),
+    assignedAt: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$timestamp$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["timestamp"])("assigned_at").defaultNow(),
+    assignedBy: (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$drizzle$2d$orm$2f$pg$2d$core$2f$columns$2f$text$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["text"])("assigned_by")
 });
 const adminSchema = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
     id: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
@@ -1091,6 +1459,7 @@ const supplierSchema = __TURBOPACK__imported__module__$5b$project$5d2f$node_modu
     id: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
     name: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
     code: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
+    passwordHash: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),
     completeUrl: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),
     terminateUrl: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),
     quotafullUrl: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),
@@ -1121,7 +1490,9 @@ const respondentSchema = __TURBOPACK__imported__module__$5b$project$5d2f$node_mo
     completedAt: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].date().nullable().optional(),
     ipAddress: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),
     userAgent: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),
-    surveyUrl: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional()
+    surveyUrl: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),
+    redirectUrl: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional(),
+    verifyHash: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional()
 });
 const insertRespondentSchema = respondentSchema.omit({
     id: true,
@@ -1178,6 +1549,33 @@ const projectS2sConfigSchema = __TURBOPACK__imported__module__$5b$project$5d2f$n
 const insertProjectS2sConfigSchema = projectS2sConfigSchema.omit({
     id: true,
     createdAt: true
+});
+const supplierUserSchema = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
+    id: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
+    username: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
+    passwordHash: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
+    supplierId: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
+    supplierCode: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
+    isActive: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].boolean().default(true),
+    lastLogin: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].date().nullable().optional(),
+    createdAt: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].date().optional(),
+    createdBy: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional()
+});
+const insertSupplierUserSchema = supplierUserSchema.omit({
+    id: true,
+    createdAt: true
+});
+const supplierProjectAccessSchema = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
+    id: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
+    userId: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
+    projectId: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
+    projectCode: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string(),
+    assignedAt: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].date().optional(),
+    assignedBy: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v3$2f$external$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().nullable().optional()
+});
+const insertSupplierProjectAccessSchema = supplierProjectAccessSchema.omit({
+    id: true,
+    assignedAt: true
 });
 }),
 "[project]/app/api/link-generator/assignments/route.ts [app-route] (ecmascript)", ((__turbopack_context__) => {
