@@ -32,6 +32,7 @@ export const projects = pgTable("projects", {
   terminateUrl: text("terminate_url"),
   quotafullUrl: text("quotafull_url"),
   securityUrl: text("security_url"),
+  customDomain: text("custom_domain"),
 });
 
 export const countrySurveys = pgTable("country_surveys", {

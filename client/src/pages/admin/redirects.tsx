@@ -8,19 +8,33 @@ import {
   Link as LinkIcon,
   Globe,
   Monitor,
-  Lock
+  Lock,
+  Play
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { GlassButton } from "@/components/ui/glass-button";
 import { useToast } from "@/hooks/use-toast";
+import type { Project } from "@shared/schema";
 
 export default function ToolLinksPage() {
   const { toast } = useToast();
   const [projectCode, setProjectCode] = useState("PRJXXXX");
 
-  // Determine base URL: process.env exists in some setups, import.meta.env in Vite.
-  // We use the exact URL requested by the user.
-  const baseUrl = "https://track.opinioninsights.in";
+  const { data: projects } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+  });
+
+  const project = projects?.find((p) => p.projectCode.toUpperCase() === projectCode.toUpperCase());
+  
+  // Determine base URL: prefer project custom domain, fallback to default
+  let baseUrl = "https://track.opinioninsights.in";
+  if (project?.customDomain) {
+    baseUrl = project.customDomain.trim();
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+  }
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -30,11 +44,15 @@ export default function ToolLinksPage() {
     });
   };
 
+  const testLink = (url: string) => {
+    window.open(url.replace("[UID]", "TEST" + Math.floor(1000 + Math.random() * 9000)), "_blank");
+  };
+
   const redirectLinks = [
     {
       title: "Complete Redirect",
       description: "Redirect for successful survey completions",
-      url: `${baseUrl}/status?code=${projectCode}&uid=[UID]&type=complete`,
+      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=complete`,
       icon: CheckCircle2,
       color: "text-emerald-500",
       bgColor: "bg-emerald-50"
@@ -42,7 +60,7 @@ export default function ToolLinksPage() {
     {
       title: "Terminate Redirect",
       description: "Redirect for disqualified respondents",
-      url: `${baseUrl}/status?code=${projectCode}&uid=[UID]&type=terminate`,
+      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=terminate`,
       icon: XCircle,
       color: "text-rose-500",
       bgColor: "bg-rose-50"
@@ -50,7 +68,7 @@ export default function ToolLinksPage() {
     {
       title: "Quotafull Redirect",
       description: "Redirect when project quotas are full",
-      url: `${baseUrl}/status?code=${projectCode}&uid=[UID]&type=quota`,
+      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=quota`,
       icon: Globe,
       color: "text-orange-500",
       bgColor: "bg-orange-50"
@@ -58,7 +76,7 @@ export default function ToolLinksPage() {
     {
       title: "Security Terminate",
       description: "Redirect for fraud or security violations",
-      url: `${baseUrl}/status?code=${projectCode}&uid=[UID]&type=security_terminate`,
+      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=security_terminate`,
       icon: ShieldAlert,
       color: "text-red-700",
       bgColor: "bg-red-50"
@@ -66,7 +84,7 @@ export default function ToolLinksPage() {
     {
       title: "Duplicate IP",
       description: "Redirect for repeated IP address attempts",
-      url: `${baseUrl}/status?code=${projectCode}&uid=[UID]&type=duplicate_ip`,
+      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=duplicate_ip`,
       icon: ShieldAlert,
       color: "text-amber-600",
       bgColor: "bg-amber-50"
@@ -74,7 +92,7 @@ export default function ToolLinksPage() {
     {
       title: "Duplicate String",
       description: "Redirect for repeated browser signatures",
-      url: `${baseUrl}/status?code=${projectCode}&uid=[UID]&type=duplicate_string`,
+      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=duplicate_string`,
       icon: Lock,
       color: "text-slate-600",
       bgColor: "bg-slate-50"
@@ -120,15 +138,30 @@ export default function ToolLinksPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">{link.title}</h3>
                     <p className="text-[10px] font-bold text-slate-400 mb-2">{link.description}</p>
-                    <div className="flex items-center gap-2 bg-slate-100/50 p-2 rounded-xl group/link border border-slate-200/50">
-                      <code className="text-[10px] font-mono font-bold text-slate-500 truncate flex-1">{link.url}</code>
-                      <GlassButton 
-                        size="icon" 
-                        className="h-7 w-7 rounded-lg group-hover/link:bg-primary group-hover/link:text-white transition-all shadow-none border-none"
-                        onClick={() => copyToClipboard(link.url, link.title)}
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </GlassButton>
+                    <div className="flex flex-col gap-2 mt-3">
+                      <div className="flex gap-2">
+                        <div className="flex items-center gap-2 bg-slate-100/50 p-2 rounded-xl group/link border border-slate-200/50 flex-1 overflow-hidden">
+                          <code className="text-[10px] font-mono font-bold text-slate-500 truncate flex-1 block" title={link.url}>{link.url}</code>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <GlassButton 
+                          size="sm" 
+                          className="h-7 text-[10px] font-black uppercase tracking-widest rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 border-none"
+                          onClick={() => testLink(link.url)}
+                        >
+                          <Play className="w-3 h-3 mr-1" />
+                          Test Link
+                        </GlassButton>
+                        <GlassButton 
+                          size="sm" 
+                          className="h-7 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-slate-800 hover:text-white transition-all shadow-none border-slate-200"
+                          onClick={() => copyToClipboard(link.url, link.title)}
+                        >
+                          <Copy className="w-3 h-3 mr-1" />
+                          Copy
+                        </GlassButton>
+                      </div>
                     </div>
                   </div>
                 </div>

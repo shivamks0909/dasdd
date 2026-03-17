@@ -26,6 +26,21 @@ export class RouterService {
   };
 
   /**
+   * Determines the base URL for a project, preferring custom domain.
+   */
+  public getBaseUrl(project?: Project): string {
+    const defaultUrl = process.env.NEXT_PUBLIC_APP_URL || this.baseUrl;
+    if (project && project.customDomain) {
+      let domain = project.customDomain.trim();
+      if (!domain.startsWith('http://') && !domain.startsWith('https://')) {
+        domain = `https://${domain}`;
+      }
+      return domain;
+    }
+    return defaultUrl;
+  }
+
+  /**
    * Generates a unified tracking link
    */
   public getTrackingUrl(projectCode: string, countryCode: string, supplierCode?: string, supplierRid?: string): string {

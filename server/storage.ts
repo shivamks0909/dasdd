@@ -155,6 +155,7 @@ const mapProject = (data: any): Project => ({
   ridCountryCode: data.rid_country_code,
   ridPadding: data.rid_padding,
   ridCounter: data.rid_counter,
+  customDomain: data.custom_domain,
   createdAt: data.created_at ? new Date(data.created_at) : undefined,
   completeUrl: data.complete_url,
   terminateUrl: data.terminate_url,

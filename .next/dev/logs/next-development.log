@@ -51,3 +51,9 @@
 [02:35:27.309] Server  LOG     [dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
 [02:35:27.322] Server  LOG     InsForge Client Initialized: {}
 [02:43:45.501] Server  LOG     ✓ Compiled in 2.1s
+[03:03:32.290] Server  LOG     ✓ Compiled in 826ms
+[03:12:11.190] Server  LOG     ✓ Compiled in 15.6s
+[03:12:12.357] Server  LOG     [dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+[03:12:12.362] Server  LOG     InsForge Client Initialized: {}
+[03:12:12.635] Server  LOG     [dotenv@17.3.1] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[03:12:12.638] Server  LOG     InsForge Client Initialized: {}
