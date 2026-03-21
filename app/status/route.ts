@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@server/db";
+import { db, pool } from "@server/db";
 import { respondents, projects } from "@shared/schema";
 import type { Project } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { routerService } from "@server/lib/router-service";
 
 export async function GET(req: NextRequest) {
@@ -11,70 +11,99 @@ export async function GET(req: NextRequest) {
   const uid = searchParams.get('uid');
   const type = searchParams.get('type');
 
+  console.log(`[StatusRoute] Request: code=${code}, uid=${uid}, type=${type}`);
+
   if (!code || !uid || !type) {
     return new NextResponse("Missing required parameters", { status: 400 });
   }
 
+  // Determine base URL: fallback to current request origin
+  const baseUrl = req.nextUrl.origin;
+  
+  // Mapping of status types to system paths
+  const pathMap: Record<string, string> = {
+    'complete': 'complete',
+    'terminate': 'terminate',
+    'quota': 'quotafull',
+    'quotafull': 'quotafull',
+    'security_terminate': 'security',
+    'security-terminate': 'security',
+    'duplicate_ip': 'security',
+    'duplicate_string': 'security',
+  };
+  const statusPath = pathMap[type.toLowerCase()] || type;
+
+  // Skip DB for temporary placeholder tests ONLY (not PRJXXXX anymore)
+  const isPlaceholder = code.startsWith("TEST_PLACEHOLDER_SKIP_DB");
+
   try {
-    // Look up project to get base URL
-    const projectArray = await db.select().from(projects).where(eq(projects.projectCode, code));
-    const project = projectArray[0] as unknown as Project;
+    // 1. Try to fetch project and update respondent (DATABASE DEPENDENT)
+    if (!isPlaceholder) {
+        console.log("[StatusRoute] Attempting database operations...");
+        // We use a separate try-catch for DB to allow fallback if it fails
+        try {
+        const rawResult = await pool.query("SELECT * FROM projects WHERE project_code = $1 LIMIT 1", [code]);
+        const project = rawResult.rows[0] as unknown as Project;
 
-    const baseUrl = routerService.getBaseUrl(project);
+        if (project) {
+            // Update respondent if found
+            const respondentArray = await pool.query(
+                "SELECT * FROM respondents WHERE project_code = $1 AND supplier_rid = $2 LIMIT 1",
+                [code, uid]
+            );
+            const respondent = respondentArray.rows[0];
 
-    // Update respondent if found
-    const respondentArray = await db.select()
-      .from(respondents)
-      .where(
-        and(
-          eq(respondents.projectCode, code),
-          eq(respondents.supplierRid, uid)
-        )
-      );
+            if (respondent) {
+              const validStatuses = ['complete', 'terminate', 'quotafull', 'security-terminate'];
+              let dbStatus = type.toLowerCase();
+              if (dbStatus === 'quota') dbStatus = 'quotafull';
+              if (dbStatus === 'security_terminate' || dbStatus === 'duplicate_ip' || dbStatus === 'duplicate_string') {
+                dbStatus = 'security-terminate';
+              }
+              const isValidStatus = validStatuses.includes(dbStatus);
 
-    const respondent = respondentArray[0];
+              await pool.query(
+                "UPDATE respondents SET status = $1, completed_at = $2 WHERE id = $3",
+                [isValidStatus ? dbStatus : type, dbStatus === 'complete' ? new Date() : null, respondent.id]
+              );
+            }
 
-    if (respondent) {
-      // Map 'type' parameter to valid DB status
-      const validStatuses = ['complete', 'terminate', 'quotafull', 'security-terminate'];
-      let dbStatus = type.toLowerCase();
-      
-      // Handle legacy/alternate string types
-      if (dbStatus === 'quota') dbStatus = 'quotafull';
-      if (dbStatus === 'security_terminate' || dbStatus === 'duplicate_ip' || dbStatus === 'duplicate_string') {
-        dbStatus = 'security-terminate';
-      }
-
-      const isValidStatus = validStatuses.includes(dbStatus);
-
-      // Update the respondent's status
-      await db.update(respondents)
-        .set({ 
-          status: isValidStatus ? dbStatus : type, 
-          completedAt: dbStatus === 'complete' ? new Date() : null 
-        })
-        .where(eq(respondents.id, respondent.id));
+            // Check for custom redirect URL if columns exist
+            // (Note: Using dynamic access to avoid crash if columns are missing)
+            const propertyMap: Record<string, string> = {
+              'complete': 'complete_url',
+              'terminate': 'terminate_url',
+              'quota': 'quotafull_url',
+              'quotafull': 'quotafull_url',
+              'security_terminate': 'security_url',
+              'security-terminate': 'security_url',
+            };
+            
+            const customUrlColumn = propertyMap[type.toLowerCase()];
+            if (customUrlColumn && project[customUrlColumn as keyof typeof project]) {
+              let redirectUrl = project[customUrlColumn as keyof typeof project] as string;
+              redirectUrl = redirectUrl.replace('[UID]', uid);
+              console.log("[StatusRoute] Using custom redirect:", redirectUrl);
+              return NextResponse.redirect(redirectUrl);
+            }
+        }
+    } catch (dbError: any) {
+        console.error("[StatusRoute] Database operation failed, falling back to system page:", dbError.message);
+        // Do NOT throw, just fall through to the system redirect below
     }
+}
 
-    // Map internal routing path based on type
-    const pathMap: Record<string, string> = {
-      'complete': 'complete',
-      'terminate': 'terminate',
-      'quota': 'quotafull',
-      'quotafull': 'quotafull',
-      'security_terminate': 'security',
-      'security-terminate': 'security',
-      'duplicate_ip': 'security',
-      'duplicate_string': 'security',
-    };
+    // 2. Fallback to generic system landing page (ROBUST)
+    const finalUrl = new URL(`${baseUrl}/pages/${statusPath}`);
+    finalUrl.searchParams.set('pid', code);
+    finalUrl.searchParams.set('uid', uid);
     
-    const statusPath = pathMap[type.toLowerCase()] || type;
-    
-    // Redirect to the appropriate pages route
-    return NextResponse.redirect(`${baseUrl}/pages/${statusPath}?pid=${code}&uid=${uid}`);
+    console.log("[StatusRoute] Redirecting to system page:", finalUrl.toString());
+    return NextResponse.redirect(finalUrl.toString());
 
-  } catch (error) {
-    console.error("Status Route Error:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+  } catch (error: any) {
+    console.error("[StatusRoute] Critical error:", error);
+    // Even in a critical error, try one last time to redirect to home
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin).toString());
   }
 }

@@ -44,13 +44,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Survey URL is required" }, { status: 400 });
     }
 
+    try {
+      new URL(survey_url);
+    } catch {
+      return NextResponse.json({ message: "Invalid Survey URL provided." }, { status: 400 });
+    }
+
     const db = getInsforge().database;
     const projectCode = generateProjectCode();
-    const projectId = uuidv4();
 
     // 1. Create Project
     const { data: projectData, error: projectError } = await db.from("projects").insert([{
-      id: projectId,
       project_code: projectCode,
       project_name: project_name || `Quick Project ${projectCode}`,
       status: "active",
@@ -61,25 +65,29 @@ export async function POST(req: NextRequest) {
       complete_url: `${APP_URL}/complete?oi_session={oi_session}`,
       terminate_url: `${APP_URL}/terminate?oi_session={oi_session}`,
       quotafull_url: `${APP_URL}/quotafull?oi_session={oi_session}`,
-      security_url: `${APP_URL}/security-terminate?oi_session={oi_session}`,
-      created_at: new Date().toISOString()
+      security_url: `${APP_URL}/security-terminate?oi_session={oi_session}`
     }]).select();
 
-    if (projectError) throw projectError;
+    if (projectError) {
+      console.error("Project Creation Error:", projectError);
+      return NextResponse.json({ message: projectError.message || "Failed to initialize project record." }, { status: 500 });
+    }
     const project = projectData[0];
 
     // 2. Create Country Survey Mapping
     const { data: surveyData, error: surveyError } = await db.from("country_surveys").insert([{
-      id: uuidv4(),
-      project_id: projectId,
+      project_id: project.id,
       project_code: projectCode,
       country_code: country,
       survey_url: survey_url,
-      status: "active",
-      created_at: new Date().toISOString()
+      status: "active"
     }]).select();
 
-    if (surveyError) throw surveyError;
+    if (surveyError) {
+      console.error("Survey Mapping Error:", surveyError);
+      // Rollback project creation? For now, we just report the error.
+      return NextResponse.json({ message: "Project created but survey mapping failed." }, { status: 500 });
+    }
     const countrySurvey = surveyData[0];
 
     // 3. Get all active suppliers to generate links
@@ -99,7 +107,7 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
 
   } catch (error: any) {
-    console.error("Quick Create Error:", error);
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    console.error("Quick Create API Error:", error);
+    return NextResponse.json({ message: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

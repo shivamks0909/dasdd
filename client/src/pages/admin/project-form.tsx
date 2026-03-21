@@ -18,6 +18,130 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertClientSchema } from "@shared/schema";
+
+function AddClientDialog({ onClientAdded }: { onClientAdded: (name: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  
+  const form = useForm({
+    resolver: zodResolver(insertClientSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      company: "",
+      website: "",
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/clients", data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      toast({ title: "Partner onboarded to Nexus" });
+      onClientAdded(data.name);
+      form.reset();
+      setOpen(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Nexus Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary/70 transition-colors ml-auto mr-1 pb-1">
+          + Add New Partner
+        </button>
+      </DialogTrigger>
+      <DialogContent className="bg-white/95 backdrop-blur-3xl border-slate-200 rounded-[2.5rem] max-w-lg shadow-2xl p-0 overflow-hidden">
+        <div className="p-10">
+          <DialogHeader className="mb-8">
+            <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-xl">
+                <Users className="w-5 h-5 text-primary" />
+              </div>
+              Onboard Partner
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 font-medium tracking-tight">Establish a new client connection for research routing.</DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Agency Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Acme Research Group" {...field} className="h-12 bg-slate-50 border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/5 transition-all text-slate-800 font-bold" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Primary Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="operations@acme.com" {...field} className="h-12 bg-slate-50 border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/5 transition-all text-slate-800" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="company"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Research Organization</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Acme Corp" {...field} className="h-12 bg-slate-50 border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/5 transition-all text-slate-800 font-bold" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter className="pt-6">
+                <button type="submit" disabled={createMutation.isPending} className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all disabled:opacity-50">
+                  {createMutation.isPending ? "Validating Path..." : "Onboard to Nexus"}
+                </button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 type CountryRow = {
   id: string; // temp uuid for key
@@ -349,7 +473,10 @@ export default function ProjectFormPage() {
 
                   <div className="space-y-6">
                     <div className="space-y-2">
-                      <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1">Client Nexus</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1">Client Nexus</label>
+                        <AddClientDialog onClientAdded={(name) => update('client', name)} />
+                      </div>
                       <select
                         value={formData.client}
                         onChange={e => update('client', e.target.value)}

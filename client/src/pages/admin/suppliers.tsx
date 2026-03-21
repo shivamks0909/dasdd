@@ -638,66 +638,98 @@ export default function SuppliersPage() {
                       <DialogDescription className="text-slate-400 font-medium">Configure a new traffic source with custom callback telemetry.</DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
-                      <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
-                        <div className="grid gap-6 sm:grid-cols-2">
-                          <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Supplier Entity</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="e.g. Dynata Global" {...field} className="h-12 bg-slate-50 border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/5 transition-all text-slate-800" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="code"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Unique Identifier (TAG)</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="DYN01" {...field} className="h-12 bg-slate-50 border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/5 transition-all text-slate-800 font-mono" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <div className="space-y-4">
-                          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary/60 border-b border-primary/10 pb-2">Callback Telemetry</p>
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            {["completeUrl", "terminateUrl", "quotafullUrl", "securityUrl"].map((fieldName) => (
-                              <FormField
-                                key={fieldName}
-                                control={form.control}
-                                name={fieldName as any}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                                      {fieldName.replace('Url', '').toUpperCase()} Entry
-                                    </FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="https://..." {...field} className="h-10 bg-slate-50 border-slate-200 rounded-xl text-xs text-slate-800" />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            ))}
+                      {createMutation.isSuccess ? (
+                        <div className="py-12 flex flex-col items-center justify-center space-y-6 animate-in zoom-in-95 duration-500">
+                          <div className="size-20 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-2xl shadow-emerald-500/20">
+                            <Check className="size-10" />
                           </div>
+                          <div className="text-center">
+                            <h3 className="text-xl font-black text-slate-800 tracking-tight">Nexus Synchronized</h3>
+                            <p className="text-sm font-bold text-slate-400 mt-2">
+                              Supplier <span className="text-primary">{form.getValues("name")}</span> is now live in the ecosystem.
+                            </p>
+                          </div>
+                          <Button 
+                            onClick={() => {
+                              createMutation.reset();
+                              setIsCreateDialogOpen(false);
+                            }}
+                            className="bg-slate-900 text-white px-10 h-12 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all"
+                          >
+                            Close Transmission
+                          </Button>
                         </div>
+                      ) : (
+                        <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
+                          <div className="grid gap-6 sm:grid-cols-2">
+                            <FormField
+                              control={form.control}
+                              name="name"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Supplier Entity</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="e.g. Dynata Global" {...field} className="h-12 bg-slate-50 border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/5 transition-all text-slate-800" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="code"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Unique Identifier (TAG)</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="DYN01" {...field} className="h-12 bg-slate-50 border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/5 transition-all text-slate-800 font-mono" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
 
-                        <DialogFooter className="pt-6">
-                          <button type="submit" disabled={createMutation.isPending} className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all disabled:opacity-50">
-                            {createMutation.isPending ? "Processing Nexus..." : "Synchronize Supplier"}
-                          </button>
-                        </DialogFooter>
-                      </form>
+                          <div className="space-y-4">
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary/60 border-b border-primary/10 pb-2">Callback Telemetry</p>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              {["completeUrl", "terminateUrl", "quotafullUrl", "securityUrl"].map((fieldName) => (
+                                <FormField
+                                  key={fieldName}
+                                  control={form.control}
+                                  name={fieldName as any}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                                        {fieldName.replace('Url', '').toUpperCase()} Entry
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="https://..." {...field} className="h-10 bg-slate-50 border-slate-200 rounded-xl text-xs text-slate-800" />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              ))}
+                            </div>
+                          </div>
+
+                          <DialogFooter className="pt-6">
+                            <button 
+                              type="submit" 
+                              disabled={createMutation.isPending} 
+                              className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                            >
+                              {createMutation.isPending ? (
+                                <>
+                                  <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                  Processing Nexus...
+                                </>
+                              ) : "Synchronize Supplier"}
+                            </button>
+                          </DialogFooter>
+                        </form>
+                      )}
                     </Form>
                   </div>
                 </DialogContent>

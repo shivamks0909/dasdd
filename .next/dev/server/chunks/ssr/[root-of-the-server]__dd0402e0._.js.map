@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 14, "column": 0}, "map": {"version":3,"sources":["file:///E:/Users/shiva/Downloads/Opinion-Routing-Platform/app/pages/security/page.tsx"],"sourcesContent":["import CallbackPage from \"@/app/components/callback-page\";\n\nexport default function SecurityPage() {\n  return (\n    <CallbackPage\n      status=\"security\"\n      title=\"Security Alert\"\n      badge=\"Security Terminated\"\n      description=\"Your session has been flagged by our security system. This action has been logged.\"\n    />\n  );\n}\n"],"names":[],"mappings":";;;;;;;;;;;;AAEe,SAAS;IACtB,qBACE,8OAAC;QACC,QAAO;QACP,OAAM;QACN,OAAM;QACN,aAAY;;;;;;AAGlB"}}]
-}

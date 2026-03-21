@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 14, "column": 0}, "map": {"version":3,"sources":["file:///E:/Users/shiva/Downloads/Opinion-Routing-Platform/app/pages/complete/page.tsx"],"sourcesContent":["import CallbackPage from \"@/app/components/callback-page\";\n\nexport default function CompletePage() {\n  return (\n    <CallbackPage\n      status=\"complete\"\n      title=\"Survey Completed\"\n      badge=\"Complete\"\n      description=\"Thank you for completing the survey. Your response has been recorded successfully.\"\n    />\n  );\n}\n"],"names":[],"mappings":";;;;;;;;;;;;AAEe,SAAS;IACtB,qBACE,8OAAC;QACC,QAAO;QACP,OAAM;QACN,OAAM;QACN,aAAY;;;;;;AAGlB"}}]
-}

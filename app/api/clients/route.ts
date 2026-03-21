@@ -46,22 +46,29 @@ export async function POST(req: NextRequest) {
     const { name, email, company, website } = body;
 
     if (!name || !email || !company) {
-      return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ message: "Missing required fields: name, email, and company are mandatory." }, { status: 400 });
     }
 
     const db = getInsforge().database;
     const { data: newClient, error } = await db.from("clients").insert([{
-      id: uuidv4(),
       name,
       email,
       company,
-      website: website || null,
-      created_at: new Date().toISOString()
+      website: website || null
     }]).select();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Client Creation Error:", error);
+      return NextResponse.json({ message: error.message || "Failed to create client in Nexus." }, { status: 500 });
+    }
+    
+    if (!newClient || newClient.length === 0) {
+      return NextResponse.json({ message: "Client creation failed: no data returned." }, { status: 500 });
+    }
+
     return NextResponse.json(newClient[0], { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    console.error("Client API Error:", error);
+    return NextResponse.json({ message: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

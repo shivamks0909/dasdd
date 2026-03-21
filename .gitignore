@@ -27,3 +27,17 @@ build/
 .roo
 .trae
 .windsurf
+tmp_check_db.js
+*.log
+.env*
+!.env.example
+*.png
+test-results/
+tmp/
+out.txt
+respondent_data.txt
+final_report.txt
+final_result.txt
+response.json
+err.txt
+err2.txt
