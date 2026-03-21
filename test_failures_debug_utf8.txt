@@ -1,0 +1,55 @@
+﻿
+Running 2 tests using 2 workers
+
+  Γ£ÿ  1 [chromium] ΓÇ║ tests\supplier-portal.spec.ts:16:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 1: Admin Creates Supplier and Assigns Project (1.0m)
+  Γ£ÿ  2 [chromium] ΓÇ║ tests\e2e.spec.ts:50:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can initialize a new project (1.0m)
+
+
+  1) [chromium] ΓÇ║ tests\e2e.spec.ts:50:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can initialize a new project 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: page.waitForResponse: Test timeout of 60000ms exceeded.
+
+      61 |         
+      62 |         // Submit and Wait for success
+    > 63 |         const createPromise = page.waitForResponse(res => res.url().includes('/api/projects/quick-create') && res.status() === 200);
+         |                                    ^
+      64 |         await page.getByRole('button', { name: 'Create Project & Generate Links' }).click();
+      65 |         await createPromise;
+      66 |
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\e2e.spec.ts:63:36
+
+    attachment #1: screenshot (image/png) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\e2e-Opinion-Insights---DOM-e916f-an-initialize-a-new-project-chromium\test-failed-1.png
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    Error Context: test-results\e2e-Opinion-Insights---DOM-e916f-an-initialize-a-new-project-chromium\error-context.md
+
+  2) [chromium] ΓÇ║ tests\supplier-portal.spec.ts:16:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 1: Admin Creates Supplier and Assigns Project 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Call log:
+    [2m  - waiting for getByPlaceholder('Select Source')[22m
+
+
+      23 |     // Select a supplier (assume one exists or wait for load)
+      24 |     // The placeholder is "Select Source" for creating credentials
+    > 25 |     await page.getByPlaceholder('Select Source').click();
+         |                                                  ^
+      26 |     await page.locator('role=option').first().click();
+      27 |     
+      28 |     await page.getByPlaceholder('dynata_admin').fill(supplierUsername);
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\supplier-portal.spec.ts:25:50
+
+    attachment #1: screenshot (image/png) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\supplier-portal-Supplier-F-de4f4-upplier-and-Assigns-Project-chromium\test-failed-1.png
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    Error Context: test-results\supplier-portal-Supplier-F-de4f4-upplier-and-Assigns-Project-chromium\error-context.md
+
+  2 failed
+    [chromium] ΓÇ║ tests\e2e.spec.ts:50:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can initialize a new project 
+    [chromium] ΓÇ║ tests\supplier-portal.spec.ts:16:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 1: Admin Creates Supplier and Assigns Project 

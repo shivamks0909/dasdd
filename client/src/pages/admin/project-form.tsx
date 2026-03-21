@@ -48,6 +48,13 @@ export default function ProjectFormPage() {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    setIsMounted(true);
+    setOrigin(window.location.origin);
+  }, []);
 
   const [match, params] = useRoute("/admin/projects/:id/edit");
   const isEditing = !!match;
@@ -580,14 +587,14 @@ export default function ProjectFormPage() {
                               </span>
                             </div>
                             <code className="text-[11px] font-black font-mono text-primary/80 break-all leading-relaxed tracking-tight block selection:bg-primary/20">
-                              {window.location.origin}/track?code={formData.project_code || '[CODE]'}&country={c.country_code || '[CC]'}&uid=[RID]
+                              {isMounted ? `${origin}/track?code=${formData.project_code || '[CODE]'}&country=${c.country_code || '[CC]'}&uid=[RID]` : "Loading endpoint..."}
                             </code>
                           </div>
                         ))
                       ) : (
                         <div className="p-6 bg-white border border-primary/20 rounded-2xl shadow-inner hover:border-primary/40 transition-all">
                           <code className="text-[11px] font-black font-mono text-primary/80 break-all leading-relaxed tracking-tight block">
-                            {window.location.origin}/track?code={formData.project_code || '[CODE]'}&country=[CC]&uid=[RID]
+                            {isMounted ? `${origin}/track?code=${formData.project_code || '[CODE]'}&country=[CC]&uid=[RID]` : "Loading endpoint..."}
                           </code>
                         </div>
                       )}

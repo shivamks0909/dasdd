@@ -20,7 +20,7 @@ export const pool = new pg.Pool({
     ? { rejectUnauthorized: false } 
     : false,
   // Reduce pool size for serverless functions to avoid exhausting Supabase connections
-  max: 1, 
+  max: process.env.NODE_ENV === "production" ? 10 : 2, 
   idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 5000,
 });

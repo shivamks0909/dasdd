@@ -1,6 +1,7 @@
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import type { Express, Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 
 const PgSession = connectPgSimple(session);
 
@@ -42,7 +43,12 @@ export function setupAuth(app: Express) {
   app.use(
     session({
       store: sessionStore,
-      secret: process.env.SESSION_SECRET || "opinion-insights-secret-key-change-me",
+      secret: (() => {
+        if (!process.env.SESSION_SECRET) {
+          throw new Error("SESSION_SECRET environment variable is required for secure sessions.");
+        }
+        return process.env.SESSION_SECRET;
+      })(),
       resave: false,
       saveUninitialized: false,
       rolling: true,
@@ -57,15 +63,49 @@ export function setupAuth(app: Express) {
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  if (!req.session.adminId) {
-    return res.status(401).json({ message: "Unauthorized as Admin" });
+  if (req.session.adminId) {
+    return next();
   }
-  next();
+
+  // Fallback to JWT (check cookie or header)
+  const token = req.cookies?.admin_token || req.headers.authorization?.split(" ")[1];
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+      if (decoded.role === "admin") {
+        req.session.adminId = decoded.id; // Sync back to session for subsequent calls
+        return next();
+      }
+    } catch (err) {
+      // Invalid token, fall through to 401
+    }
+  }
+
+  return res.status(401).json({ message: "Unauthorized as Admin" });
 }
 
 export function requireSupplier(req: Request, res: Response, next: NextFunction) {
-  if (!req.session.supplierUserId) {
-    return res.status(401).json({ message: "Unauthorized as Supplier" });
+  if (req.session.supplierUserId) {
+    return next();
   }
-  next();
+
+  // Fallback to JWT
+  const token = req.cookies?.admin_token || req.headers.authorization?.split(" ")[1];
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+      // Admin token should also allow supplier access generally, 
+      // but let's check for specifically allowed roles if needed.
+      if (decoded.role === "admin" || decoded.role === "supplier") {
+        if (decoded.role === "supplier") {
+          req.session.supplierUserId = decoded.id;
+        }
+        return next();
+      }
+    } catch (err) {
+      // Invalid
+    }
+  }
+
+  return res.status(401).json({ message: "Unauthorized as Supplier" });
 }

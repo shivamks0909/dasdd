@@ -1,63 +1,65 @@
 "use client";
 
+import React from "react";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 
+function FloatingPaths({ position }: { position: number }) {
+    const paths = Array.from({ length: 36 }, (_, i) => ({
+        id: i,
+        d: `M-${380 - i * 5 * position} -${189 + i * 6}C-${
+            380 - i * 5 * position
+        } -${189 + i * 6} -${312 - i * 5 * position} ${216 - i * 6} ${
+            152 - i * 5 * position
+        } ${343 - i * 6}C${616 - i * 5 * position} ${470 - i * 6} ${
+            684 - i * 5 * position
+        } ${875 - i * 6} ${684 - i * 5 * position} ${875 - i * 6}`,
+        width: 0.5 + i * 0.03,
+    }));
+
+    const [duration, setDuration] = React.useState(25);
+    React.useEffect(() => {
+        setDuration(20 + Math.random() * 10);
+    }, []);
+
+    return (
+        <div className="absolute inset-0 pointer-events-none">
+            <svg
+                className="w-full h-full text-white"
+                viewBox="0 0 696 316"
+                fill="none"
+            >
+                <title>Background Paths</title>
+                {paths.map((path) => (
+                    <motion.path
+                        key={path.id}
+                        d={path.d}
+                        stroke="currentColor"
+                        strokeWidth={path.width}
+                        strokeOpacity={0.08 + path.id * 0.02}
+                        initial={{ pathLength: 0.3, opacity: 0.6 }}
+                        animate={{
+                            pathLength: 1,
+                            opacity: [0.3, 0.6, 0.3],
+                            pathOffset: [0, 1, 0],
+                        }}
+                        transition={{
+                            duration: duration,
+                            repeat: Number.POSITIVE_INFINITY,
+                            ease: "linear",
+                        }}
+                    />
+                ))}
+            </svg>
+        </div>
+    );
+}
+
+/** Pure background layer — place inside a `relative` container */
 export function BackgroundPaths() {
-  const paths = [
-    {
-      d: "M-100,50 Q200,10 500,50 T1100,50",
-      duration: 20,
-      stroke: "rgba(59, 130, 246, 0.08)",
-    },
-    {
-      d: "M-100,80 Q300,40 600,80 T1100,80",
-      duration: 25,
-      stroke: "rgba(59, 130, 246, 0.05)",
-    },
-    {
-      d: "M-100,20 Q400,60 700,20 T1100,20",
-      duration: 18,
-      stroke: "rgba(59, 130, 246, 0.07)",
-    },
-    {
-      d: "M-100,100 Q100,10 400,100 T1100,100",
-      duration: 30,
-      stroke: "rgba(59, 130, 246, 0.04)",
-    },
-  ];
-
-  return (
-    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-slate-50/50">
-      <svg
-        className="absolute w-full h-full"
-        viewBox="0 0 1000 100"
-        preserveAspectRatio="none"
-      >
-        {paths.map((path, i) => (
-          <motion.path
-            key={i}
-            d={path.d}
-            fill="none"
-            stroke={path.stroke}
-            strokeWidth="0.5"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{
-              pathLength: [0, 1, 0],
-              opacity: [0, 1, 0],
-              x: [0, 50, 0],
-            }}
-            transition={{
-              duration: path.duration,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-      </svg>
-      {/* Soft gradient overlays for depth */}
-      <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-white/80" />
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50/10 to-transparent" />
-    </div>
-  );
+    return (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <FloatingPaths position={1} />
+            <FloatingPaths position={-1} />
+        </div>
+    );
 }

@@ -1,0 +1,90 @@
+﻿
+Running 7 tests using 2 workers
+
+  Γ£ô  2 [chromium] ΓÇ║ tests\e2e.spec.ts:14:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can log in and view dashboard (31.4s)
+  Γ£ô  1 [chromium] ΓÇ║ tests\e2e.spec.ts:32:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can create a new supplier (35.4s)
+  Γ£ô  4 [chromium] ΓÇ║ tests\e2e.spec.ts:73:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Respondent tracking system functions (4.7s)
+  Γ£ÿ  3 [chromium] ΓÇ║ tests\e2e.spec.ts:50:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can initialize a new project (1.0m)
+  Γ£ÿ  5 [chromium] ΓÇ║ tests\supplier-portal.spec.ts:16:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 1: Admin Creates Supplier and Assigns Project (1.0m)
+  Γ£ô  7 [chromium] ΓÇ║ tests\supplier-portal.spec.ts:68:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 3: Direct User Flow Redirect Verification (4.2s)
+  Γ£ÿ  6 [chromium] ΓÇ║ tests\supplier-portal.spec.ts:53:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 2: Supplier Logs In and Views Dashboard (19.6s)
+
+
+  1) [chromium] ΓÇ║ tests\e2e.spec.ts:50:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can initialize a new project 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: page.waitForResponse: Test timeout of 60000ms exceeded.
+
+      61 |         
+      62 |         // Submit and Wait for success
+    > 63 |         const createPromise = page.waitForResponse(res => res.url().includes('/api/projects/quick-create') && res.status() === 200);
+         |                                    ^
+      64 |         await page.getByRole('button', { name: 'Create Project & Generate Links' }).click();
+      65 |         await createPromise;
+      66 |
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\e2e.spec.ts:63:36
+
+    attachment #1: screenshot (image/png) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\e2e-Opinion-Insights---DOM-e916f-an-initialize-a-new-project-chromium\test-failed-1.png
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    Error Context: test-results\e2e-Opinion-Insights---DOM-e916f-an-initialize-a-new-project-chromium\error-context.md
+
+  2) [chromium] ΓÇ║ tests\supplier-portal.spec.ts:16:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 1: Admin Creates Supplier and Assigns Project 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Call log:
+    [2m  - waiting for getByPlaceholder('Select Source')[22m
+
+
+      23 |     // Select a supplier (assume one exists or wait for load)
+      24 |     // The placeholder is "Select Source" for creating credentials
+    > 25 |     await page.getByPlaceholder('Select Source').click();
+         |                                                  ^
+      26 |     await page.locator('role=option').first().click();
+      27 |     
+      28 |     await page.getByPlaceholder('dynata_admin').fill(supplierUsername);
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\supplier-portal.spec.ts:25:50
+
+    attachment #1: screenshot (image/png) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\supplier-portal-Supplier-F-de4f4-upplier-and-Assigns-Project-chromium\test-failed-1.png
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    Error Context: test-results\supplier-portal-Supplier-F-de4f4-upplier-and-Assigns-Project-chromium\error-context.md
+
+  3) [chromium] ΓÇ║ tests\supplier-portal.spec.ts:53:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 2: Supplier Logs In and Views Dashboard 
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveURL[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Expected: [32m"http://localhost:3000/supplier/[7mdashboard[27m"[39m
+    Received: [31m"http://localhost:3000/supplier/[7mlogin[27m"[39m
+    Timeout:  15000ms
+
+    Call log:
+    [2m  - Expect "toHaveURL" with timeout 15000ms[22m
+    [2m    18 ├ù unexpected value "http://localhost:3000/supplier/login"[22m
+
+
+      61 |     
+      62 |     // 2. Verify Dashboard
+    > 63 |     await expect(page).toHaveURL("/supplier/dashboard", { timeout: 15000 });
+         |                        ^
+      64 |     await expect(page.locator("text=Active Session Sync (Live)")).toBeVisible();
+      65 |     await expect(page.locator("text=Respondent stream")).toBeVisible();
+      66 |   });
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\supplier-portal.spec.ts:63:24
+
+    attachment #1: screenshot (image/png) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\supplier-portal-Supplier-F-d2c20-Logs-In-and-Views-Dashboard-chromium\test-failed-1.png
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    Error Context: test-results\supplier-portal-Supplier-F-d2c20-Logs-In-and-Views-Dashboard-chromium\error-context.md
+
+  3 failed
+    [chromium] ΓÇ║ tests\e2e.spec.ts:50:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can initialize a new project 
+    [chromium] ΓÇ║ tests\supplier-portal.spec.ts:16:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 1: Admin Creates Supplier and Assigns Project 
+    [chromium] ΓÇ║ tests\supplier-portal.spec.ts:53:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 2: Supplier Logs In and Views Dashboard 
+  4 passed (2.1m)

@@ -1,7 +1,11 @@
 import jwt from 'jsonwebtoken';
 import { NextRequest, NextResponse } from 'next/server';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is required for secure authentication.");
+}
 
 export interface AuthUser {
   id: string;
@@ -10,18 +14,29 @@ export interface AuthUser {
 }
 
 export function generateToken(user: AuthUser): string {
-  return jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET missing during token generation");
+  }
+  return jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '24h' });
 }
 
 export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
   const authHeader = req.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  let token: string | null = null;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else {
+    token = req.cookies.get('admin_token')?.value || null;
+  }
+
+  if (!token) {
     return null;
   }
 
-  const token = authHeader.split(' ')[1];
   try {
-    return jwt.verify(token, JWT_SECRET) as AuthUser;
+    const secret = process.env.JWT_SECRET!;
+    return jwt.verify(token, secret) as any as AuthUser;
   } catch (error) {
     return null;
   }

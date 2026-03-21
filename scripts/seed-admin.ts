@@ -1,4 +1,4 @@
-import { storage, seedAdmin } from "./server/storage";
+import { storage, seedAdmin } from "../server/storage";
 
 async function run() {
   console.log("Seeding started...");

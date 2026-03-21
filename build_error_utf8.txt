@@ -1,0 +1,67 @@
+﻿
+> rest-express@1.0.0 build
+> next build
+
+node.exe : ΓÜá Warning: Next.js inferred your 
+workspace root, but it may not be correct.
+At line:1 char:1
++ & "E:\Program Files\nodejs/node.exe" 
+"E:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ΓÜá 
+    Warning: Ne...not be correct.:String) [], R  
+  emoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ We detected multiple lockfiles and selected the 
+directory of E:\Users\shiva\package-lock.json as 
+the root directory.
+ To silence this warning, set `turbopack.root` 
+in your Next.js config, or consider removing one 
+of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/
+config/next-config-js/turbopack#root-directory 
+for more information.
+ Detected additional lockfiles: 
+   * E:\Users\shiva\Downloads\Opinion-Routing-Pla
+tform\package-lock.json
+
+Γû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.production, .env
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 8.7s
+  Running TypeScript ...
+Failed to compile.
+
+./client/src/pages/LandingPage.tsx:45:34
+Type error: Type '{ title: string; }' is not 
+assignable to type 'IntrinsicAttributes'.
+  Property 'title' does not exist on type 
+'IntrinsicAttributes'.
+
+[0m [90m 43 |[39m         
+[33m<[39m[33mdiv[39m 
+className[33m=[39m[32m"min-h-screen relative 
+flex items-center justify-center overflow-hidden 
+bg-white"[39m[33m>[39m
+ [90m 44 |[39m             
+[33m<[39m[33mdiv[39m 
+className[33m=[39m[32m"absolute inset-0 
+z-0"[39m[33m>[39m
+[31m[1m>[22m[39m[90m 45 |[39m              
+   [33m<[39m[33mBackgroundPaths[39m 
+title[33m=[39m[32m"Opinion Routing"[39m 
+[33m/[39m[33m>[39m
+ [90m    |[39m                                 
+ [31m[1m^[22m[39m
+ [90m 46 |[39m             
+[33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m 47 |[39m
+ [90m 48 |[39m             
+[33m<[39m[33mdiv[39m 
+className[33m=[39m[32m"relative z-10 w-full 
+max-w-md mx-4"[39m[33m>[39m[0m
+Next.js build worker exited with code: 1 and 
+signal: null

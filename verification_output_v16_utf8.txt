@@ -1,0 +1,14 @@
+﻿
+--- Test 1: Using rid parameter ---
+Using Random RID: RID_o5us9
+Status: 307
+Survey URL: https://survey.test/start?pid=%7Bpid%7D&rid=RID_o5us9&country=US&sup=TEST_SUP&toid=TOID_456&custom_ext=EXT_789&age=25&gender=male&oi_session=4ed85619-5d15-4bce-9f12-51f27dec24d1
+Γ¥î Failure: rid or toid missing in survey URL
+Extracted OI Session: 4ed85619-5d15-4bce-9f12-51f27dec24d1
+
+--- Test 2: Verifying final redirect injection ---
+Calling Callback URL: http://localhost:3000/api/complete?oi_session=4ed85619-5d15-4bce-9f12-51f27dec24d1
+Callback Status: 307
+Final Redirect URL Header: https://supplier.test/complete?uid=RID_o5us9&age=25&gender=male&rid=RID_o5us9&toid=TOID_456&custom_ext=EXT_789
+Detection Results: { hasRid: true, hasToid: true, hasCustom: true }
+Γ£à Success: All parameters (rid, toid, custom_ext) preserved in final redirect

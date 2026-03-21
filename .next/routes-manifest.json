@@ -176,6 +176,18 @@
       "namedRegex": "^/api/complete(?:/)?$"
     },
     {
+      "page": "/api/debug/country-surveys",
+      "regex": "^/api/debug/country\\-surveys(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/debug/country\\-surveys(?:/)?$"
+    },
+    {
+      "page": "/api/debug/respondents",
+      "regex": "^/api/debug/respondents(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/debug/respondents(?:/)?$"
+    },
+    {
       "page": "/api/link-generator/assignments",
       "regex": "^/api/link\\-generator/assignments(?:/)?$",
       "routeKeys": {},
@@ -266,6 +278,12 @@
       "namedRegex": "^/complete(?:/)?$"
     },
     {
+      "page": "/login",
+      "regex": "^/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/login(?:/)?$"
+    },
+    {
       "page": "/pages/complete",
       "regex": "^/pages/complete(?:/)?$",
       "routeKeys": {},
@@ -300,6 +318,12 @@
       "regex": "^/security\\-terminate(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/security\\-terminate(?:/)?$"
+    },
+    {
+      "page": "/status",
+      "regex": "^/status(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/status(?:/)?$"
     },
     {
       "page": "/terminate",

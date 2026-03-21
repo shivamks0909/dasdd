@@ -68,8 +68,9 @@ export default function SupplierLoginPage() {
           <CardContent className="px-12 pb-12">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-1">
-                <label className="text-[14px] text-slate-600 block">LoginID</label>
+                <label htmlFor="loginId" className="text-[14px] text-slate-600 block">LoginID</label>
                 <Input
+                  id="loginId"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="bg-[#eef4ff] border-[#b8d4ff] text-slate-800 h-[42px] rounded-sm focus-visible:ring-1 focus-visible:ring-[#3b82f6]"
@@ -77,8 +78,9 @@ export default function SupplierLoginPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[14px] text-slate-600 block">Password</label>
+                <label htmlFor="password" className="text-[14px] text-slate-600 block">Password</label>
                 <Input
+                  id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

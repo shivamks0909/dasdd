@@ -1,0 +1,149 @@
+﻿
+Running 7 tests using 2 workers
+
+  Γ£ÿ  2 [chromium] ΓÇ║ tests\e2e.spec.ts:6:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can log in and view dashboard (12.1s)
+  Γ£ÿ  1 [chromium] ΓÇ║ tests\e2e.spec.ts:26:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can create a new supplier (30.1s)
+  Γ£ô  4 [chromium] ΓÇ║ tests\e2e.spec.ts:87:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Respondent tracking system functions (1.0s)
+  Γ£ÿ  3 [chromium] ΓÇ║ tests\e2e.spec.ts:48:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can initialize a new project (30.1s)
+  Γ£ÿ  5 [chromium] ΓÇ║ tests\supplier-portal.spec.ts:8:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 1: Admin Creates Supplier and Assigns Project (30.1s)
+  Γ£ÿ  7 [chromium] ΓÇ║ tests\supplier-portal.spec.ts:60:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 3: Direct User Flow Redirect Verification (6.0s)
+  Γ£ÿ  6 [chromium] ΓÇ║ tests\supplier-portal.spec.ts:47:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 2: Supplier Logs In and Views Dashboard (30.1s)
+
+
+  1) [chromium] ΓÇ║ tests\e2e.spec.ts:6:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can log in and view dashboard 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText('TOTAL HITS')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByText('TOTAL HITS')[22m
+
+
+      20 |         await expect(page.getByText('Control Hub')).toBeVisible();
+      21 |         await expect(page.getByText('Management Deck')).toBeVisible();
+    > 22 |         await expect(page.getByText('TOTAL HITS')).toBeVisible();
+         |                                                    ^
+      23 |     });
+      24 |
+      25 |     // Test 2: Supplier Creation Flow
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\e2e.spec.ts:22:52
+
+    Error Context: test-results\e2e-Opinion-Insights---DOM-499b1-n-log-in-and-view-dashboard-chromium\error-context.md
+
+  2) [chromium] ΓÇ║ tests\e2e.spec.ts:26:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can create a new supplier 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByRole('button', { name: /Register Source/i })[22m
+
+
+      33 |
+      34 |         // Open Dialog
+    > 35 |         await page.getByRole('button', { name: /Register Source/i }).click();
+         |                                                                      ^
+      36 |
+      37 |         // Fill Form
+      38 |         await page.getByPlaceholder('e.g. Dynata Global').fill('Automated Test Supplier');
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\e2e.spec.ts:35:70
+
+    Error Context: test-results\e2e-Opinion-Insights---DOM-ac97d-n-can-create-a-new-supplier-chromium\error-context.md
+
+  3) [chromium] ΓÇ║ tests\e2e.spec.ts:48:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can initialize a new project 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.fill: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByPlaceholder('e.g. Q4 Consumer Pulse')[22m
+
+
+      55 |
+      56 |         // Step 1: Core Details
+    > 57 |         await page.getByPlaceholder('e.g. Q4 Consumer Pulse').fill('DOM E2E Test Project');
+         |                                                               ^
+      58 |         await page.getByPlaceholder('PROJECT_X_2024').fill('DOME2E');
+      59 |         
+      60 |         // RID Block
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\e2e.spec.ts:57:63
+
+    Error Context: test-results\e2e-Opinion-Insights---DOM-e916f-an-initialize-a-new-project-chromium\error-context.md
+
+  4) [chromium] ΓÇ║ tests\supplier-portal.spec.ts:8:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 1: Admin Creates Supplier and Assigns Project 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByPlaceholder('Select User')[22m
+
+
+      34 |     
+      35 |     // Select the user we just created
+    > 36 |     await page.getByPlaceholder('Select User').click();
+         |                                                ^
+      37 |     await page.locator(`role=option >> text=${supplierUsername}`).click();
+      38 |     
+      39 |     // Select any project
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\supplier-portal.spec.ts:36:48
+
+    Error Context: test-results\supplier-portal-Supplier-F-de4f4-upplier-and-Assigns-Project-chromium\error-context.md
+
+  5) [chromium] ΓÇ║ tests\supplier-portal.spec.ts:47:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 2: Supplier Logs In and Views Dashboard 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.fill: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByLabel('LoginID')[22m
+
+
+      48 |     // 1. Go to Supplier Login
+      49 |     await page.goto("/supplier/login");
+    > 50 |     await page.getByLabel('LoginID').fill(supplierUsername);
+         |                                      ^
+      51 |     await page.getByLabel('Password').fill(supplierPassword);
+      52 |     await page.getByRole('button', { name: 'LOG IN' }).click();
+      53 |     
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\supplier-portal.spec.ts:50:38
+
+    Error Context: test-results\supplier-portal-Supplier-F-d2c20-Logs-In-and-Views-Dashboard-chromium\error-context.md
+
+  6) [chromium] ΓÇ║ tests\supplier-portal.spec.ts:60:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 3: Direct User Flow Redirect Verification 
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveURL[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Expected pattern: [32m/\/landing\?oi_session=/[39m
+    Received string:  [31m"http://localhost:3000/track?code=DOME2E&country=US&sup=AUTO01&uid=TESTUID456"[39m
+    Timeout: 5000ms
+
+    Call log:
+    [2m  - Expect "toHaveURL" with timeout 5000ms[22m
+    [2m    9 ├ù unexpected value "http://localhost:3000/track?code=DOME2E&country=US&sup=AUTO01&uid=TESTUID456"[22m
+
+
+      64 |     
+      65 |     // 2. Should redirect to landing page
+    > 66 |     await expect(page).toHaveURL(/\/landing\?oi_session=/);
+         |                        ^
+      67 |     await expect(page.locator("text=Preparing Routing")).toBeVisible();
+      68 |   });
+      69 | });
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\supplier-portal.spec.ts:66:24
+
+    Error Context: test-results\supplier-portal-Supplier-F-4e5ca--Flow-Redirect-Verification-chromium\error-context.md
+
+  6 failed
+    [chromium] ΓÇ║ tests\e2e.spec.ts:6:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can log in and view dashboard 
+    [chromium] ΓÇ║ tests\e2e.spec.ts:26:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can create a new supplier 
+    [chromium] ΓÇ║ tests\e2e.spec.ts:48:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can initialize a new project 
+    [chromium] ΓÇ║ tests\supplier-portal.spec.ts:8:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 1: Admin Creates Supplier and Assigns Project 
+    [chromium] ΓÇ║ tests\supplier-portal.spec.ts:47:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 2: Supplier Logs In and Views Dashboard 
+    [chromium] ΓÇ║ tests\supplier-portal.spec.ts:60:3 ΓÇ║ Supplier Flow End-to-End ΓÇ║ Phase 3: Direct User Flow Redirect Verification 
+  1 passed (1.4m)

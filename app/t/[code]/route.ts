@@ -6,12 +6,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
   const { code } = await params;
   const searchParams = req.nextUrl.searchParams;
   
+  const rawParams = Object.fromEntries(searchParams.entries());
+  const supplierRid = (rawParams.uid || rawParams.rid || rawParams.toid || rawParams.zid || `DIR-${Math.random().toString(36).substring(7)}`);
+
+  console.log(`[NextRoute] Processing tracking for supplierRid=${supplierRid}`);
+
   const result = await processTrackingRequest({
     projectCode: code,
-    countryCode: searchParams.get('country') || '',
-    supplierCode: searchParams.get('sup') || undefined,
-    supplierRid: searchParams.get('uid') || undefined,
-    extraParams: Object.fromEntries(searchParams.entries()),
+    countryCode: rawParams.country || '',
+    supplierCode: rawParams.sup || undefined,
+    supplierRid,
+    extraParams: rawParams,
     ip: req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown",
     userAgent: req.headers.get("user-agent") || "unknown"
   });

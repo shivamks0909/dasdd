@@ -10,8 +10,23 @@ import {
   TrendingUp,
   Activity,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Moon
 } from "lucide-react";
+import {
+  SunIcon,
+  MoonIcon,
+  CloudIcon,
+  RainIcon,
+  HeavyRainIcon,
+  SnowIcon,
+  ThunderIcon,
+  WindIcon,
+  FogIcon,
+  PartlyCloudyIcon,
+  SunriseIcon,
+  RainbowIcon
+} from "@/components/ui/weather-icons";
 import {
   AreaChart,
   Area,
@@ -51,14 +66,23 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = statsQuery.data || {
+  const stats: DashboardStats = statsQuery.data || {
     totalProjects: 0,
+    activeProjects: 0,
     totalRespondents: 0,
     completes: 0,
     terminates: 0,
     quotafulls: 0,
     securityTerminates: 0,
     activityData: [],
+    clicksToday: 0,
+    completesToday: 0,
+    quotafullToday: 0,
+    terminatesToday: 0,
+    inProgressToday: 0,
+    duplicatesToday: 0,
+    securityToday: 0,
+    conversionRateToday: "0%",
   };
 
   const irPercent = stats.totalRespondents > 0
@@ -72,49 +96,49 @@ export default function DashboardPage() {
         <StatCard
           title="Total Hits"
           value={stats.totalRespondents}
-          icon={Activity}
+          icon={SunIcon}
           description="Total Router Clicks"
           className="shadow-sm border-slate-200/60 bg-white/60"
         />
         <StatCard
           title="Total Starts"
           value={stats.totalRespondents}
-          icon={Users}
+          icon={CloudIcon}
           description="In-Progress Sessions"
           className="shadow-sm border-slate-200/60 bg-white/60"
         />
         <StatCard
           title="Completes"
           value={stats.completes}
-          icon={CheckCircle2}
+          icon={RainbowIcon}
           description="Successful Submissions"
           className="shadow-sm border-slate-200/60 bg-white/60"
         />
         <StatCard
           title="Terminates"
           value={stats.terminates}
-          icon={XCircle}
+          icon={RainIcon}
           description="Screened Out"
           className="shadow-sm border-slate-200/60 bg-white/60"
         />
         <StatCard
           title="Quota Full"
           value={stats.quotafulls}
-          icon={AlertCircle}
+          icon={FogIcon}
           description="Over Quota Capacity"
           className="shadow-sm border-slate-200/60 bg-white/60"
         />
         <StatCard
           title="Security / Fraud"
           value={stats.securityTerminates}
-          icon={ShieldAlert}
+          icon={ThunderIcon}
           description="Blocked Sessions"
           className="shadow-sm border-slate-200/60 bg-white/60"
         />
         <StatCard
           title="Conversion (IR %)"
           value={`${irPercent}%`}
-          icon={TrendingUp}
+          icon={SunriseIcon}
           description="Completes / Starts"
           className="shadow-sm border-slate-200/60 bg-white/60"
         />
@@ -125,12 +149,12 @@ export default function DashboardPage() {
         {/* Intelligence Chart placeholder - Keeping original layout but making grid 3 cols */}
         <Card className="lg:col-span-2 bg-white/40 border-slate-200/60 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl shadow-slate-200/20 overflow-hidden relative group">
           <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:rotate-12 transition-transform duration-700">
-            <TrendingUp className="w-32 h-32" />
+            <SunriseIcon size={128} />
           </div>
           <CardHeader className="p-8 border-b border-slate-100">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-xl">
-                <Activity className="w-4 h-4 text-primary" />
+                <WindIcon size={16} className="text-primary" />
               </div>
               <CardTitle className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Traffic Pulse (24h)</CardTitle>
             </div>
@@ -290,7 +314,7 @@ function SecurityAlerts() {
       <CardHeader className="p-8 border-b border-rose-100 flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-rose-100 rounded-xl">
-            <ShieldAlert className="w-4 h-4 text-rose-600" />
+            <ThunderIcon size={16} className="text-rose-600" />
           </div>
           <CardTitle className="text-sm font-black uppercase tracking-[0.2em] text-rose-500">Security Guard (Active)</CardTitle>
         </div>

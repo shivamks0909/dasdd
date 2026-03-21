@@ -18,6 +18,7 @@ export class RouterService {
     'complete': '/pages/complete',
     'terminate': '/pages/terminate',
     'quotafull': '/pages/quotafull',
+    'quota': '/pages/quotafull',
     'security-terminate': '/pages/security',
     'fraud': '/pages/security',
     'duplicate': '/pages/duplicate',
@@ -125,14 +126,38 @@ export class RouterService {
     const replacements: Record<string, string> = {
       'rid': sanitizedRid,
       'uid': sanitizedRid,
+      'id': sanitizedRid, // common alias
       'pid': respondent.projectCode || '',
-      'oi_session': respondent.oiSession
+      'oi_session': respondent.oiSession,
+      ...(respondent.extraParams || {})
     };
     
     let url = finalRedirectUrl;
+    const usedKeys = new Set<string>();
+
     for (const [key, val] of Object.entries(replacements)) {
       const regex = new RegExp(`\\{\\{${key}\\}\\}|\\{${key}\\}|\\[${key}\\]`, 'gi');
-      url = url.replace(regex, val);
+      if (regex.test(url)) {
+        url = url.replace(regex, val);
+        usedKeys.add(key);
+      }
+    }
+
+    // Auto-append any extra parameters that weren't used as placeholders
+    if (respondent.extraParams) {
+      const urlObj = new URL(url.includes('://') ? url : `http://localhost${url}`);
+      let modified = false;
+      for (const [key, val] of Object.entries(respondent.extraParams)) {
+        const isUsed = usedKeys.has(key);
+        const isExcluded = ['code', 'country', 'sup'].includes(key);
+        if (!isUsed && !isExcluded) {
+          urlObj.searchParams.set(key, val);
+          modified = true;
+        }
+      }
+      if (modified) {
+        url = url.includes('://') ? urlObj.toString() : urlObj.pathname + urlObj.search;
+      }
     }
 
     return url;

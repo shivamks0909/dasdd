@@ -531,6 +531,16 @@ export default function SuppliersPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [origin, setOrigin] = useState("");
+  const [host, setHost] = useState("");
+
+  useEffect(() => {
+    setIsMounted(true);
+    setOrigin(window.location.origin);
+    setHost(window.location.host);
+  }, []);
 
   const { data: suppliers, isLoading } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -557,6 +567,7 @@ export default function SuppliersPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
       toast({ title: "Supplier registered successfully" });
       form.reset();
+      setIsCreateDialogOpen(false);
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -608,7 +619,7 @@ export default function SuppliersPage() {
         <TabsContent value="nexus">
           <div className="space-y-8">
             <div className="flex justify-end">
-              <Dialog>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
                   <button className="bg-primary text-white hover:bg-primary/90 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]">
                     <Plus className="h-4 w-4" />
@@ -760,10 +771,10 @@ export default function SuppliersPage() {
                         </div>
                         <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 group/link relative mb-4">
                           <code className="text-[11px] break-all font-mono text-slate-500 block leading-relaxed pr-10">
-                            {window.location.host}/track?code=[PID]&country=[CC]&sup={supplier.code}&uid=[RID]
+                            {isMounted ? `${host}/track?code=[PID]&country=[CC]&sup=${supplier.code}&uid=[RID]` : "Loading link..."}
                           </code>
                           <button
-                            onClick={() => handleCopy(`${window.location.protocol}//${window.location.host}/track?code=[PID]&country=[CC]&sup=${supplier.code}&uid=[RID]`, supplier.code)}
+                            onClick={() => handleCopy(`${origin}/track?code=[PID]&country=[CC]&sup=${supplier.code}&uid=[RID]`, supplier.code)}
                             className="absolute right-4 top-1/2 -translate-y-1/2 p-2 hover:bg-primary/10 rounded-lg transition-all"
                           >
                             {copiedId === supplier.code ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-slate-300 hover:text-primary transition-colors" />}

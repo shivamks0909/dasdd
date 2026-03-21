@@ -54,21 +54,25 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
     }
 
     // 3. Validate Country Survey
+    console.log(`[TrackingCore] Fetching country survey for ${projectCode}/${countryCode}...`);
     const countrySurvey = await storage.getCountrySurveyByCode(projectCode, countryCode);
+    console.log(`[TrackingCore] Country survey: ${!!countrySurvey}`);
     if (!countrySurvey || countrySurvey.status !== 'active') {
       return { error: { status: 404, message: "Survey not found for this country" } };
     }
 
     // 4. Check for Duplicates
+    console.log(`[TrackingCore] Checking duplicates for ${supplierRid}...`);
     const isDuplicate = await storage.checkDuplicateRespondent(projectCode, supplierCode, supplierRid);
+    console.log(`[TrackingCore] isDuplicate: ${isDuplicate}`);
     if (isDuplicate) {
       const oiSessionForLog = randomUUID();
       await storage.createActivityLog({
         oiSession: oiSessionForLog,
         projectCode,
         eventType: 'duplicate_entry',
-        meta: { details: `Duplicate RID detected: ${supplierRid} for ${supplierCode} on ${projectCode}` } as any
-      } as any);
+        meta: { details: `Duplicate RID detected: ${supplierRid} for ${supplierCode} on ${projectCode}` }
+      });
 
       const redirectParams = new URLSearchParams({
         pid: projectCode,
@@ -85,6 +89,7 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
 
     // 5. Generate Client RID (Atomic)
     let clientRid: string;
+    console.log(`[TrackingCore] Generating client RID...`);
     try {
       clientRid = await storage.generateClientRID(projectCode);
     } catch (ridErr: any) {
@@ -109,7 +114,9 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
     
     // S2S Generation
     let s2sToken: string | null = null;
+    console.log(`[TrackingCore] Fetching S2S config...`);
     const s2sConfig = await storage.getS2sConfig(projectCode);
+    console.log(`[TrackingCore] S2S config: ${!!s2sConfig}`);
     
     if (s2sConfig && s2sConfig.requireS2S) {
       s2sToken = generateS2SToken(oiSession, s2sConfig.s2sSecret);
@@ -164,6 +171,7 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
     }
 
     // 8. Save respondent
+    console.log(`[TrackingCore] Saving respondent ${oiSession}...`);
     await storage.createRespondent({
       oiSession,
       projectCode,
@@ -175,8 +183,11 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
       ipAddress: params.ip || null,
       userAgent: params.userAgent || null,
       s2sToken,
-      startedAt: new Date()
-    } as any);
+      s2sVerified: false,
+      fraudScore: 0,
+      extraParams,
+    });
+    console.log(`[TrackingCore] Respondent saved. Redirection pending.`);
 
     return { redirectUrl };
 

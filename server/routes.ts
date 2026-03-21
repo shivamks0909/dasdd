@@ -14,7 +14,7 @@ import {
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { s2sLogs, projectS2sConfig, respondents, activityLogs } from "@shared/schema";
+import { s2sLogs, projectS2sConfig, respondents, activityLogs, type Supplier, type Project, type Respondent } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { generateS2SToken, verifyS2SToken } from "./s2s";
 import { generateExcelReport } from "./lib/export-excel-server";
@@ -128,7 +128,9 @@ export async function registerRoutes(
 
   app.get("/api/admin/respondents", requireAdmin, async (_req: Request, res: Response) => {
     const list = await storage.getRespondents();
-    return res.json(list);
+    // Filter sensitive fields like s2sToken before sending to client
+    const safeList = list.map(({ s2sToken, ...rest }) => rest);
+    return res.json(safeList);
   });
 
   app.get("/api/admin/responses/export", requireAdmin, async (_req: Request, res: Response) => {
@@ -364,7 +366,9 @@ export async function registerRoutes(
   // SUPPLIERS
   app.get("/api/suppliers", requireAdmin, async (_req: Request, res: Response) => {
     const sups = await storage.getSuppliers();
-    return res.json(sups);
+    // Filter passwordHash before sending to client
+    const safeSups = sups.map(({ passwordHash, ...rest }) => rest);
+    return res.json(safeSups);
   });
 
   app.post("/api/suppliers", requireAdmin, async (req: Request, res: Response) => {
@@ -535,7 +539,9 @@ export async function registerRoutes(
   // ====== ADMIN SUPPLIER MANAGEMENT ======
   app.get("/api/admin/suppliers/users", requireAdmin, async (_req: Request, res: Response) => {
     const users = await storage.listSupplierUsers();
-    return res.json(users);
+    // Filter passwordHash before sending to client
+    const safeUsers = users.map(({ passwordHash, ...rest }) => rest);
+    return res.json(safeUsers);
   });
 
   app.post("/api/admin/suppliers/users", requireAdmin, async (req: Request, res: Response) => {
@@ -551,7 +557,9 @@ export async function registerRoutes(
       passwordHash,
       createdBy: "admin"
     });
-    return res.status(201).json(user);
+    // Filter passwordHash before sending to client
+    const { passwordHash: _, ...safeUser } = user;
+    return res.status(201).json(safeUser);
   });
 
   app.patch("/api/admin/suppliers/users/:id", requireAdmin, async (req: Request, res: Response) => {
@@ -562,7 +570,9 @@ export async function registerRoutes(
     }
     const user = await storage.updateSupplierUser(req.params.id as string, updateData);
     if (!user) return res.status(404).json({ message: "User not found" });
-    return res.json(user);
+    // Filter passwordHash before sending to client
+    const { passwordHash: _, ...safeUser } = user;
+    return res.json(safeUser);
   });
 
   app.delete("/api/admin/suppliers/users", requireAdmin, async (req: Request, res: Response) => {
@@ -675,7 +685,9 @@ export async function registerRoutes(
     const projectCodes = access.map(a => a.projectCode);
     
     const respondents = await storage.getSupplierRespondents(user.supplierCode, projectCodes);
-    return res.json(respondents);
+    // Filter sensitive fields like s2sToken for supplier portal
+    const safeRespondents = respondents.map(({ s2sToken, verifyHash, ...rest }) => rest);
+    return res.json(safeRespondents);
   });
 
   app.get("/api/supplier/responses/export-excel", requireSupplier, async (req: Request, res: Response) => {
@@ -688,8 +700,8 @@ export async function registerRoutes(
       
       const respondents = await storage.getSupplierRespondents(user.supplierCode, projectCodes, true);
       const projects = await storage.getAssignedProjects(user.id);
-      const suppliers = await storage.getSuppliers?.() || []; 
-      const supplier = (suppliers as any[]).find(s => s.code === user.supplierCode);
+      const suppliers = await storage.getSuppliers?.() || [] as Supplier[]; 
+      const supplier = suppliers.find(s => s.code === user.supplierCode);
       
       const logs = await db.query.s2sLogs.findMany({
         where: (logs: any, { eq, and }) => and(
@@ -726,16 +738,30 @@ export async function registerRoutes(
   // OR https://router.domain.com/t/{PROJECT_CODE}?country={CC}&sup={SUP_CODE}&uid={SUP_RID}
   // sup and uid are OPTIONAL — links work with or without a supplier
   const handleTrackingRequest = async (req: Request, res: Response, codeFromPath?: string) => {
-    const { code, country, sup, uid, ...extraParams } = req.query;
+    const { code, country, sup, uid, rid, toid, zid, pid, mid, sid, ...remainingParams } = req.query;
     const projectCode = (codeFromPath || code) as string;
     const countryCode = country as string;
+    
+    // Normalize Supplier RID from common parameter names used by various platforms
+    // rid (Dynata), toid (Lucid), zid (Cint), uid (Generic), pid (Pollfish), mid (Mindshare), sid (SurveySampling)
+    const supplierRid = (uid || rid || toid || zid || pid || mid || sid) as string;
+    
+    // Ensure all these parameters are preserved in extraParams for auto-injection/appending
+    const extraParams: Record<string, string> = { ...remainingParams as Record<string, string> };
+    if (uid) extraParams.uid = uid as string;
+    if (rid) extraParams.rid = rid as string;
+    if (toid) extraParams.toid = toid as string;
+    if (zid) extraParams.zid = zid as string;
+    if (pid) extraParams.pid = pid as string;
+    if (mid) extraParams.mid = mid as string;
+    if (sid) extraParams.sid = sid as string;
 
     const result = await processTrackingRequest({
       projectCode,
       countryCode,
       supplierCode: sup as string,
-      supplierRid: uid as string,
-      extraParams: extraParams as Record<string, string>,
+      supplierRid: supplierRid,
+      extraParams,
       ip: (req.headers["x-forwarded-for"] as string)?.split(",")[0] || req.ip || "unknown",
       userAgent: req.headers["user-agent"]
     });
@@ -782,8 +808,8 @@ export async function registerRoutes(
         await storage.createActivityLog({
           oiSession: respondent.oiSession,
           eventType: 'security_alert',
-          meta: { details: `Fraud attempt blocked: Manual client complete without S2S verification.` } as any
-        } as any);
+          meta: { details: `Fraud attempt blocked: Manual client complete without S2S verification.` }
+        });
         
         // Also update respondent fraud flag
         await db.update(respondents)
@@ -805,8 +831,8 @@ export async function registerRoutes(
     await storage.createActivityLog({
       oiSession: respondent.oiSession,
       eventType: 'callback',
-      meta: { details: `Received ${status} callback from client.` } as any
-    } as any);
+      meta: { details: `Received ${status} callback from client.` }
+    });
 
     // Calculate Destination URL using Unified Router Service
     const finalRedirectUrl = routerService.getStatusRedirectUrl(finalStatus, respondent, supplier, project);
@@ -960,7 +986,7 @@ export async function registerRoutes(
         try {
           const existing = await storage.getSupplierByCode(sd.code);
           if (!existing) {
-            await storage.createSupplier({ ...sd, passwordHash: null } as any);
+            await storage.createSupplier({ ...sd, passwordHash: null });
             results.push(`Created supplier: ${sd.code}`);
           } else {
             results.push(`Skipped supplier (exists): ${sd.code}`);
@@ -1007,8 +1033,8 @@ export async function registerRoutes(
               userAgent: userAgents[i % userAgents.length],
               status,
               s2sVerified: status === "complete",
-              fraudScore: status === "security-terminate" ? "0.92" : "0.0",
-            } as any);
+              fraudScore: status === "security-terminate" ? 0.92 : 0.0,
+            });
 
             respondentCount++;
           } catch (_) {}

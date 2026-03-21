@@ -2,7 +2,7 @@
   "[project]/Downloads/Opinion-Routing-Platform/client/src/App.tsx [app-client] (ecmascript, next/dynamic entry)": {
     "id": "[project]/Downloads/Opinion-Routing-Platform/client/src/App.tsx [app-client] (ecmascript, next/dynamic entry)",
     "files": [
-      "static/chunks/Downloads_Opinion-Routing-Platform_client_src_components_6abfa151._.js",
+      "static/chunks/Downloads_Opinion-Routing-Platform_client_src_components_01aef82d._.js",
       "static/chunks/6c7f9_Opinion-Routing-Platform_client_src_pages_admin_project-form_tsx_c291c330._.js",
       "static/chunks/Downloads_Opinion-Routing-Platform_client_src_pages_admin_suppliers_tsx_cf2aa565._.js",
       "static/chunks/6c7f9_Opinion-Routing-Platform_client_src_pages_admin_link-generator_tsx_c5d967b3._.js",
@@ -11,17 +11,17 @@
       "static/chunks/Downloads_Opinion-Routing-Platform_client_src_pages_31636dd4._.js",
       "static/chunks/Downloads_Opinion-Routing-Platform_client_src_e8b8f954._.js",
       "static/chunks/Downloads_Opinion-Routing-Platform_shared_schema_ts_51b43a46._.js",
-      "static/chunks/80b64_@tanstack_query-core_build_modern_3024999b._.js",
-      "static/chunks/80b64_lucide-react_dist_esm_9dbde2e3._.js",
+      "static/chunks/80b64_@tanstack_query-core_build_modern_4b6ec3ac._.js",
+      "static/chunks/80b64_lucide-react_dist_esm_9bc4d449._.js",
       "static/chunks/80b64_framer-motion_dist_es_309bceaa._.js",
       "static/chunks/80b64_zod_v3_7512050e._.js",
       "static/chunks/80b64_lodash_0f59ea86._.js",
       "static/chunks/80b64_recharts_es6_fe1b745b._.js",
       "static/chunks/80b64_drizzle-orm_40fd087f._.js",
-      "static/chunks/80b64_@radix-ui_fe493252._.js",
+      "static/chunks/80b64_@radix-ui_eb48c158._.js",
       "static/chunks/80b64_@floating-ui_9c89e7dd._.js",
-      "static/chunks/80b64_508cc28f._.js",
-      "static/chunks/Downloads_Opinion-Routing-Platform_client_src_App_tsx_814af510._.js"
+      "static/chunks/80b64_a45816ee._.js",
+      "static/chunks/Downloads_Opinion-Routing-Platform_client_src_App_tsx_70e79f84._.js"
     ]
   }
 }

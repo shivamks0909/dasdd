@@ -200,7 +200,8 @@ const mapRespondent = (data: any): Respondent => ({
   userAgent: data.user_agent,
   surveyUrl: data.survey_url,
   redirectUrl: data.redirect_url,
-  verifyHash: data.verify_hash
+  verifyHash: data.verify_hash,
+  extraParams: data.extra_params
 });
 
 const mapSupplierUser = (data: any): SupplierUser => ({
@@ -250,17 +251,28 @@ export class DatabaseStorage implements IStorage {
 
   // Projects
   async getProjects(): Promise<Project[]> {
-    const { data } = await insforge.database.from("projects").select("*").order("created_at", { ascending: false });
+    const { data } = await insforge.database.from("projects")
+      .select("*")
+      .neq("status", "deleted")
+      .order("created_at", { ascending: false });
     return (data || []).map(mapProject);
   }
 
   async getProjectById(id: string): Promise<Project | undefined> {
-    const { data } = await insforge.database.from("projects").select("*").eq("id", id).single();
+    const { data } = await insforge.database.from("projects")
+      .select("*")
+      .eq("id", id)
+      .neq("status", "deleted")
+      .single();
     return data ? mapProject(data) : undefined;
   }
 
   async getProjectByCode(projectCode: string): Promise<Project | undefined> {
-    const { data } = await insforge.database.from("projects").select("*").eq("project_code", projectCode).maybeSingle();
+    const { data } = await insforge.database.from("projects")
+      .select("*")
+      .eq("project_code", projectCode)
+      .neq("status", "deleted")
+      .maybeSingle();
     return data ? mapProject(data) : undefined;
   }
 
@@ -279,8 +291,12 @@ export class DatabaseStorage implements IStorage {
       quotafull_url: project.quotafullUrl,
       security_url: project.securityUrl
     };
-    const { data } = await insforge.database.from("projects").insert([dbProject]).select().single();
-    if (!data) throw new Error("Failed to create project");
+    const { data, error } = await insforge.database.from("projects").insert([dbProject]).select().single();
+    if (error) {
+      console.error("Supabase Error on Create Project:", error);
+      throw new Error(`Failed to create project: ${error.message}`);
+    }
+    if (!data) throw new Error("Failed to create project: No data returned");
     return mapProject(data);
   }
 
@@ -319,7 +335,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProject(id: string): Promise<void> {
-    await insforge.database.from("projects").delete().eq("id", id);
+    // Soft delete
+    await insforge.database.from("projects").update({ status: "deleted" }).eq("id", id);
   }
 
   // Country Surveys
@@ -426,9 +443,11 @@ export class DatabaseStorage implements IStorage {
       s2s_token: respondent.s2sToken,
       ip_address: respondent.ipAddress,
       user_agent: respondent.userAgent,
-      survey_url: respondent.surveyUrl || (respondent as any).surveyUrl || null,
-      verify_hash: respondent.verifyHash || (respondent as any).verifyHash || null
+      survey_url: respondent.surveyUrl || null,
+      verify_hash: respondent.verifyHash || null,
+      extra_params: respondent.extraParams || null
     };
+    console.log(`[Storage] Inserting respondent with extra_params:`, JSON.stringify(dbRespondent.extra_params));
     const { data, error } = await insforge.database.from("respondents").insert([dbRespondent]).select().single();
     if (error) {
       console.error("Supabase Error on Create Respondent:", error);
@@ -455,8 +474,11 @@ export class DatabaseStorage implements IStorage {
     const { data } = await insforge.database.from("respondents")
       .update(updateData)
       .eq("oi_session", oiSession)
-      .select()
-      .single();
+      .select("*, extra_params")
+      .maybeSingle();
+    
+    console.log(`[Storage] Updated respondent ${oiSession}, data keys:`, Object.keys(data || {}));
+    console.log(`[Storage] data.extra_params (raw):`, data?.extra_params);
     return data ? mapRespondent(data) : undefined;
   }
 
@@ -510,9 +532,8 @@ export class DatabaseStorage implements IStorage {
       event_type: log.eventType,
       meta: log.meta || null
     };
-    // Include project_code if provided (tracking handler sends it)
-    if ((log as any).projectCode) {
-      dbLog.project_code = (log as any).projectCode;
+    if (log.projectCode) {
+      dbLog.project_code = log.projectCode;
     }
     const { data } = await insforge.database.from("activity_logs").insert([dbLog]).select().single();
     if (!data) throw new Error("Failed to create activity log");
@@ -893,8 +914,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSupplierDashboardStats(userId: string, supplierCode: string): Promise<DashboardStats> {
-    const access = await this.getSupplierProjectAccess(userId);
-    const projectCodes = access.map(a => a.projectCode);
+    const assignedProjects = await this.getAssignedProjects(userId);
+    const projectCodes = assignedProjects.map(p => p.projectCode);
     
     if (projectCodes.length === 0) {
       return {
@@ -921,9 +942,8 @@ export class DatabaseStorage implements IStorage {
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString();
 
-    const { count: totalProjects } = await insforge.database.from("supplier_project_access")
-      .select("*", { count: 'exact', head: true })
-      .eq("user_id", userId);
+    const totalProjects = assignedProjects.length;
+    const activeProjects = assignedProjects.filter(p => p.status === "active").length;
 
     // Cumulative All-time stats
     const { count: totalRespondents } = await insforge.database.from("respondents")
@@ -1181,6 +1201,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteSupplierUser(id: string): Promise<void> {
+    // Cleanup project access first
+    await insforge.database.from("supplier_project_access").delete().eq("user_id", id);
+    // Delete user
     await insforge.database.from("supplier_users").delete().eq("id", id);
   }
 

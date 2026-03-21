@@ -77,6 +77,7 @@ export const respondents = pgTable("respondents", {
   surveyUrl: text("survey_url"),
   redirectUrl: text("redirect_url"),
   verifyHash: text("verify_hash"),
+  extraParams: jsonb("extra_params").$type<Record<string, string>>(),
 });
 
 export const activityLogs = pgTable("activity_logs", {
@@ -267,6 +268,7 @@ export const respondentSchema = z.object({
   surveyUrl: z.string().nullable().optional(),
   redirectUrl: z.string().nullable().optional(),
   verifyHash: z.string().nullable().optional(),
+  extraParams: z.record(z.string()).nullable().optional(),
 });
 
 export const insertRespondentSchema = respondentSchema.omit({

@@ -10,7 +10,7 @@ export function useAuth() {
   const { data: user, isLoading, isError } = useQuery<AdminUser | null>({
     queryKey: ["/api/auth/me"],
     queryFn: getQueryFn({ on401: "returnNull" }),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     retry: false,
   });
 

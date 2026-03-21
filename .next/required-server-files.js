@@ -100,7 +100,7 @@ self.__SERVER_FILES_MANIFEST={
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "E:\\Users\\shiva\\Downloads\\Opinion-Routing-Platform",
+    "outputFileTracingRoot": "E:\\Users\\shiva",
     "cacheComponents": false,
     "cacheLife": {
       "default": {
@@ -293,12 +293,17 @@ self.__SERVER_FILES_MANIFEST={
     "bundlePagesRouterDependencies": false,
     "configFileName": "next.config.mjs",
     "turbopack": {
-      "root": "E:\\Users\\shiva\\Downloads\\Opinion-Routing-Platform"
+      "resolveAlias": {
+        "@server": "E:\\Users\\shiva\\Downloads\\Opinion-Routing-Platform\\server",
+        "@shared": "E:\\Users\\shiva\\Downloads\\Opinion-Routing-Platform\\shared",
+        "@lib": "E:\\Users\\shiva\\Downloads\\Opinion-Routing-Platform\\lib"
+      },
+      "root": "E:\\Users\\shiva"
     },
     "distDirRoot": ".next"
   },
   "appDir": "E:\\Users\\shiva\\Downloads\\Opinion-Routing-Platform",
-  "relativeAppDir": "",
+  "relativeAppDir": "Downloads\\Opinion-Routing-Platform",
   "files": [
     ".next\\routes-manifest.json",
     ".next\\server\\pages-manifest.json",

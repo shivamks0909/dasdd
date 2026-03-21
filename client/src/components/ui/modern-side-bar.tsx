@@ -41,6 +41,17 @@ interface ModernSideBarProps {
 export function ModernSideBar({ username }: ModernSideBarProps) {
     const [pathname] = useLocation();
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [mounted, setMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!mounted) {
+        return (
+            <aside className="hidden md:flex flex-col w-[260px] h-screen sticky top-0 bg-white border-r border-slate-100 shadow-[4px_0_24px_rgba(0,0,0,0.02)]" />
+        );
+    }
 
     return (
         <motion.aside

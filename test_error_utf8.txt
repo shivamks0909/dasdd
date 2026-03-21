@@ -1,0 +1,38 @@
+﻿
+Running 1 test using 1 worker
+
+  Γ£ÿ  1 [chromium] ΓÇ║ tests\e2e.spec.ts:29:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can create a new supplier (12.0s)
+
+
+  1) [chromium] ΓÇ║ tests\e2e.spec.ts:29:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can create a new supplier 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('text=AUTO3905')
+    Expected: visible
+    Error: strict mode violation: locator('text=AUTO3905') resolved to 2 elements:
+        1) <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">Nexus Node: AUTO3905</div> aka getByText('Nexus Node: AUTO3905')
+        2) <code class="text-[11px] break-all font-mono text-slate-500 block leading-relaxed pr-10">localhost:3000/track?code=[PID]&country=[CC]&sup=ΓÇª</code> aka getByText('localhost:3000/track?code=[PID]&country=[CC]&sup=AUTO3905&uid=[RID]')
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('text=AUTO3905')[22m
+
+
+      48 |
+      49 |         // Verify supplier card exists
+    > 50 |         await expect(page.locator(`text=${supplierCode}`)).toBeVisible();
+         |                                                            ^
+      51 |     });
+      52 |
+      53 |     // Test 3: Project Creation Flow
+        at E:\Users\shiva\Downloads\Opinion-Routing-Platform\tests\e2e.spec.ts:50:60
+
+    attachment #1: screenshot (image/png) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\e2e-Opinion-Insights---DOM-ac97d-n-can-create-a-new-supplier-chromium\test-failed-1.png
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    Error Context: test-results\e2e-Opinion-Insights---DOM-ac97d-n-can-create-a-new-supplier-chromium\error-context.md
+
+  1 failed
+    [chromium] ΓÇ║ tests\e2e.spec.ts:29:5 ΓÇ║ Opinion Insights - DOM Regression Test ΓÇ║ Admin can create a new supplier 

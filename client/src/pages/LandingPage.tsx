@@ -42,7 +42,7 @@ export default function LandingPage() {
     return (
         <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-white">
             <div className="absolute inset-0 z-0">
-                <BackgroundPaths title="Opinion Routing" />
+                <BackgroundPaths />
             </div>
 
             <div className="relative z-10 w-full max-w-md mx-4">

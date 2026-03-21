@@ -148,15 +148,24 @@ export default function SupplierDashboardPage() {
     );
   }
 
-  const dashboardStats = stats || {
+  const dashboardStats: SupplierDashboardData = stats || {
     totalRespondents: 0,
     completes: 0,
     terminates: 0,
     quotafulls: 0,
     securityTerminates: 0,
     totalProjects: 0,
+    activeProjects: 0,
     activityData: [],
     assignedProjects: [],
+    clicksToday: 0,
+    completesToday: 0,
+    quotafullToday: 0,
+    terminatesToday: 0,
+    inProgressToday: 0,
+    duplicatesToday: 0,
+    securityToday: 0,
+    conversionRateToday: "0%",
   };
 
   return (

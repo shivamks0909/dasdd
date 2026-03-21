@@ -83,17 +83,21 @@ async function main() {
   // 2. CLEANUP old test data
   console.log("🧹 Cleaning up old test data...");
   const projects = await apiGet("/api/projects", token);
+  console.log(`   Found ${Array.isArray(projects) ? projects.length : 0} projects`);
   if (Array.isArray(projects)) {
     for (const p of projects.filter(p => p.projectCode === "TEST2026")) {
+      console.log(`   Deleting project ${p.id}...`);
       await apiDelete(`/api/projects/${p.id}`, token);
-      console.log(`  Removed project ${p.id}`);
+      console.log(`   ✅ Removed project ${p.id}`);
     }
   }
   const suppliers = await apiGet("/api/suppliers", token);
+  console.log(`   Found ${Array.isArray(suppliers) ? suppliers.length : 0} suppliers`);
   if (Array.isArray(suppliers)) {
     for (const s of suppliers.filter(s => s.code === "TESTSUP")) {
+      console.log(`   Deleting supplier ${s.id}...`);
       await apiDelete(`/api/suppliers/${s.id}`, token);
-      console.log(`  Removed supplier ${s.id}`);
+      console.log(`   ✅ Removed supplier ${s.id}`);
     }
   }
   console.log("");
