@@ -42,7 +42,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
   }
 }
 
-export function authMiddleware(handler: (req: NextRequest, user: AuthUser) => Promise<NextResponse>) {
+export function authMiddleware(handler: (req: NextRequest, user: AuthUser) => Promise<Response>) {
   return async (req: NextRequest) => {
     const user = await getAuthUser(req);
     if (!user) {
