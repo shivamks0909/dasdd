@@ -290,6 +290,11 @@ export const respondentSchema = z.object({
 export const insertRespondentSchema = respondentSchema.omit({
   id: true,
   startedAt: true,
+}).extend({
+  isFakeSuspected: z.boolean().optional(),
+  fraudScore: z.number().optional(),
+  s2sVerified: z.boolean().optional(),
+  status: z.string().optional(),
 });
 
 export type Respondent = z.infer<typeof respondentSchema>;
