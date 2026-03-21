@@ -8,3 +8,21 @@
     --foreground: 222 47% 11%;
   }
 }
+
+/* Response table font fixes */
+.response-table td {
+  font-size: 13px;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+.response-table th {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+}
+.font-mono {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  font-size: 11px;
+}

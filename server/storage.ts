@@ -201,7 +201,15 @@ const mapRespondent = (data: any): Respondent => ({
   surveyUrl: data.survey_url,
   redirectUrl: data.redirect_url,
   verifyHash: data.verify_hash,
-  extraParams: data.extra_params
+  extraParams: data.extra_params,
+  deviceType: data.device_type,
+  browser: data.browser,
+  os: data.os,
+  s2sVerifiedAt: data.s2s_verified_at ? new Date(data.s2s_verified_at) : undefined,
+  s2sVerifiedIp: data.s2s_verified_ip,
+  isFakeSuspected: !!data.is_fake_suspected,
+  fakeReason: data.fake_reason,
+  redirectStatus: data.redirect_status
 });
 
 const mapSupplierUser = (data: any): SupplierUser => ({
@@ -445,7 +453,15 @@ export class DatabaseStorage implements IStorage {
       user_agent: respondent.userAgent,
       survey_url: respondent.surveyUrl || null,
       verify_hash: respondent.verifyHash || null,
-      extra_params: respondent.extraParams || null
+      extra_params: respondent.extraParams || null,
+      device_type: respondent.deviceType || null,
+      browser: respondent.browser || null,
+      os: respondent.os || null,
+      s2s_verified_at: respondent.s2sVerifiedAt || null,
+      s2s_verified_ip: respondent.s2sVerifiedIp || null,
+      is_fake_suspected: respondent.isFakeSuspected || false,
+      fake_reason: respondent.fakeReason || null,
+      redirect_status: respondent.redirectStatus || null
     };
     console.log(`[Storage] Inserting respondent with extra_params:`, JSON.stringify(dbRespondent.extra_params));
     const { data, error } = await insforge.database.from("respondents").insert([dbRespondent]).select().single();

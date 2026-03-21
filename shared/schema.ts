@@ -74,10 +74,18 @@ export const respondents = pgTable("respondents", {
   completedAt: timestamp("completed_at"),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  surveyUrl: text("survey_url"),
-  redirectUrl: text("redirect_url"),
-  verifyHash: text("verify_hash"),
-  extraParams: jsonb("extra_params").$type<Record<string, string>>(),
+  survey_url: text("survey_url"),
+  redirect_url: text("redirect_url"),
+  verify_hash: text("verify_hash"),
+  extra_params: jsonb("extra_params").$type<Record<string, string>>(),
+  device_type: text("device_type"),
+  browser: text("browser"),
+  os: text("os"),
+  s2s_verified_at: timestamp("s2s_verified_at"),
+  s2s_verified_ip: text("s2s_verified_ip"),
+  is_fake_suspected: boolean("is_fake_suspected").default(false),
+  fake_reason: text("fake_reason"),
+  redirect_status: text("redirect_status"),
 });
 
 export const activityLogs = pgTable("activity_logs", {
@@ -269,6 +277,14 @@ export const respondentSchema = z.object({
   redirectUrl: z.string().nullable().optional(),
   verifyHash: z.string().nullable().optional(),
   extraParams: z.record(z.string()).nullable().optional(),
+  deviceType: z.string().nullable().optional(),
+  browser: z.string().nullable().optional(),
+  os: z.string().nullable().optional(),
+  s2sVerifiedAt: z.date().nullable().optional(),
+  s2sVerifiedIp: z.string().nullable().optional(),
+  isFakeSuspected: z.boolean().default(false),
+  fakeReason: z.string().nullable().optional(),
+  redirectStatus: z.string().nullable().optional(),
 });
 
 export const insertRespondentSchema = respondentSchema.omit({

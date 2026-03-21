@@ -6,9 +6,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { Download, FileSpreadsheet, Search, Filter, Database, Globe, ShieldCheck, ShieldAlert, Clock, Monitor, Smartphone, Tablet as TabletIcon, Activity, CheckCircle2, ChevronRight } from "lucide-react";
-import type { Respondent } from "@shared/schema";
+import { Download, FileSpreadsheet, Loader2, Search, Filter, Database, Globe, ShieldCheck, ShieldAlert, Clock, Monitor, Smartphone, Tablet as TabletIcon, Activity, CheckCircle2, ChevronRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { GlassButton } from "@/components/ui/glass-button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { type Respondent } from "@shared/schema";
 
 interface EnrichedRespondent extends Respondent {
   supplierName?: string;
@@ -30,10 +41,11 @@ const getDeviceType = (ua: string | null) => {
 };
 
 export default function ResponsesPage() {
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [deviceFilter, setDeviceFilter] = useState("all");
-  const [isExporting, setIsExporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const { data: responses, isLoading } = useQuery<EnrichedRespondent[]>({
     queryKey: ["/api/admin/responses"],
@@ -49,39 +61,82 @@ export default function ResponsesPage() {
 
   const { data: s2sLogs } = useQuery<any[]>({
     queryKey: ["/api/s2s/alerts"], // Reusing security alerts or we could add a dedicated endpoint if needed
-    enabled: isExporting, 
+    enabled: exporting, 
   });
 
-  const filteredResponses = responses?.filter((r) => {
+  const filteredResponses = responses?.filter((r: any) => {
     const matchesSearch =
-      r.projectCode.toLowerCase().includes(search.toLowerCase()) ||
+      (r.projectCode || "").toLowerCase().includes(search.toLowerCase()) ||
       (r.supplierCode || "").toLowerCase().includes(search.toLowerCase()) ||
       (r.ipAddress || "").includes(search) ||
-      String(r.id).toLowerCase().includes(search.toLowerCase());
+      String(r.id || "").toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || r.status === statusFilter;
     const matchesDevice = deviceFilter === "all" || getDeviceType(r.userAgent || null).toLowerCase() === deviceFilter.toLowerCase();
     return matchesSearch && matchesStatus && matchesDevice;
   });
 
-  const handleExcelExport = async () => {
-    setIsExporting(true);
+  const handleExportExcel = async (mode: 'current' | 'all' | 'security') => {
+    setExporting(true);
     try {
-      const response = await fetch("/api/admin/responses/export-excel");
-      if (!response.ok) throw new Error("Export failed");
-      
+      const params = new URLSearchParams();
+
+      if (mode === 'current') {
+        // Apply current active filters from the UI state
+        if (search) params.set('search', search);
+        if (statusFilter !== 'all') params.set('status', statusFilter);
+        if (deviceFilter !== 'all') params.set('device', deviceFilter);
+      }
+
+      if (mode === 'security') {
+        params.set('fake_only', 'true');
+      }
+
+      params.set('export_mode', mode);
+
+      const token = localStorage.getItem('auth_token') || '';
+      const response = await fetch(`/api/responses/export?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ message: 'Export failed' }));
+        throw new Error(err.message || 'Export failed');
+      }
+
       const blob = await response.blob();
+      const cd = response.headers.get('Content-Disposition') || '';
+      const match = cd.match(/filename="?([^"]+)"?/);
+      const fileName = match ? match[1] : `OpinionInsights_Export_${Date.now()}.xlsx`;
+
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `OpinionInsights_Analytics_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error("Excel Export Error:", error);
+      const link = document.createElement('a');
+      link.style.display = 'none';
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      toast({
+        title: "Export Success",
+        description: `Export complete — ${fileName}`,
+      });
+    } catch (err: any) {
+      console.error('Export error:', err);
+      toast({
+        title: "Export Failed",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
-      setIsExporting(false);
+      setExporting(false);
     }
   };
 
@@ -137,14 +192,57 @@ export default function ResponsesPage() {
           </GlassButton>
         </div>
 
-        <GlassButton
-          className="bg-primary text-white hover:bg-primary/90 px-8 py-3 h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-xl shadow-primary/20 w-full md:w-auto"
-          onClick={handleExcelExport}
-          disabled={isExporting}
-        >
-          <FileSpreadsheet className="h-4 w-4" />
-          {isExporting ? 'EXPORTING...' : 'EXPORT RESPONSES (EXCEL)'}
-        </GlassButton>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="gap-2 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 h-12 rounded-2xl px-8"
+              disabled={exporting}
+            >
+              {exporting
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <FileSpreadsheet className="h-4 w-4" />
+              }
+              {exporting ? 'Exporting...' : 'Export'}
+              <Download className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52 rounded-2xl shadow-2xl border-none p-2 bg-white/95 backdrop-blur-xl">
+            <DropdownMenuLabel className="text-xs text-muted-foreground px-3 py-2">Export Options</DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-slate-100/50" />
+            <DropdownMenuItem 
+              onClick={() => handleExportExcel('current')}
+              className="rounded-xl focus:bg-emerald-50 focus:text-emerald-700 p-3 cursor-pointer"
+            >
+              <FileSpreadsheet className="mr-3 h-4 w-4 text-emerald-600" />
+              <div>
+                <div className="text-sm font-bold">Current View</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">With active filters</div>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => handleExportExcel('all')}
+              className="rounded-xl focus:bg-blue-50 focus:text-blue-700 p-3 cursor-pointer"
+            >
+              <FileSpreadsheet className="mr-3 h-4 w-4 text-blue-600" />
+              <div>
+                <div className="text-sm font-bold">Full Export</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">All records, no filters</div>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-slate-100/50" />
+            <DropdownMenuItem 
+              onClick={() => handleExportExcel('security')}
+              className="rounded-xl focus:bg-red-50 focus:text-red-700 p-3 cursor-pointer"
+            >
+              <FileSpreadsheet className="mr-3 h-4 w-4 text-red-600" />
+              <div>
+                <div className="text-sm font-bold">Security Report</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">Fake attempts only</div>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Card className="bg-white/40 border-none rounded-[2.5rem] backdrop-blur-2xl shadow-2xl shadow-slate-200/30 overflow-hidden">
@@ -157,99 +255,109 @@ export default function ResponsesPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="response-table">
                 <TableHeader>
-                  <TableRow className="hover:bg-transparent border-none">
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Supplier UID</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Client UID</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Supplier</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Project</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Code</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">IP</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Device</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">User Agent</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Status</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">Start</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto">End</TableHead>
-                    <TableHead className="font-black text-[9px] uppercase tracking-widest text-slate-400 px-6 py-6 h-auto text-right flex items-center justify-end gap-1">
-                      LOI <Clock className="w-3 h-3 animate-pulse text-emerald-500" />
-                    </TableHead>
+                  <TableRow>
+                    <TableHead className="w-10">#</TableHead>
+                    <TableHead>Supplier UID (Incoming)</TableHead>
+                    <TableHead>Supplier</TableHead>
+                    <TableHead>Client UID Sent</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>IP Address</TableHead>
+                    <TableHead>Device</TableHead>
+                    <TableHead>User Agent</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Timestamp</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-100/40">
-                  {filteredResponses?.map((r) => {
-                    const getLOI = (start?: string | Date, end?: string | Date | null) => {
-                      if (!start || !end) return "—";
-                      const s = new Date(start).getTime();
-                      const e = new Date(end).getTime();
-                      const diff = Math.floor((e - s) / 60000);
-                      return diff < 1 ? "< 1m" : `${diff}m`;
-                    };
+                  {filteredResponses?.map((row, index) => (
+                    <TableRow key={row.id} className="cursor-pointer hover:bg-muted/50">
 
-                    return (
-                      <TableRow key={r.id} className="group hover:bg-slate-50 transition-all border-none">
-                        <TableCell className="px-6 py-5">
-                          <span className="text-[11px] font-bold text-slate-400 font-mono tracking-tight">{r.supplierRid || r.id}</span>
-                        </TableCell>
-                        <TableCell className="px-6">
-                           <span className="text-[13px] font-black text-slate-700 font-mono tracking-tight uppercase">{r.clientRid || "CONNECTING"}</span>
-                        </TableCell>
-                        <TableCell className="px-6">
-                           <span className="text-[11px] font-black text-primary uppercase tracking-tighter bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10">
-                            {r.supplierName || r.supplierCode || "Direct"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="px-6">
-                          <span className="text-[12px] font-black text-slate-800 tracking-tight leading-none uppercase">{r.projectName || r.projectCode}</span>
-                        </TableCell>
-                        <TableCell className="px-6">
-                          <span className="text-[10px] font-bold text-slate-400 font-mono uppercase tracking-widest">{r.projectCode}</span>
-                        </TableCell>
-                        <TableCell className="px-6">
-                          <span className="text-[11px] font-mono font-bold text-slate-500">{r.ipAddress || "0.0.0.0"}</span>
-                        </TableCell>
-                        <TableCell className="px-6">
-                           <div className="flex flex-col gap-1 items-start">
-                             {getDeviceIcon(r.userAgent || null)}
-                            <span className="text-[9px] font-bold text-slate-400 uppercase">{getDeviceType(r.userAgent || null)}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-6 max-w-[120px]">
-                           <span className="text-[10px] text-slate-400 truncate block leading-relaxed" title={r.userAgent || ""}>
-                            {r.userAgent || "Unknown"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="px-6">
-                          <StatusBadge status={r.status || "started"} className="h-6 text-[9px] font-black" />
-                        </TableCell>
-                        <TableCell className="px-6">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">
-                              {r.startedAt ? new Date(r.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : "—"}
-                            </span>
-                            <span className="text-[9px] font-medium text-slate-400 whitespace-nowrap">
-                              {r.startedAt ? new Date(r.startedAt).toLocaleDateString() : ""}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-6">
-                           <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">
-                              {r.completedAt ? new Date(r.completedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : "—"}
-                            </span>
-                            <span className="text-[9px] font-medium text-slate-400 whitespace-nowrap">
-                              {r.completedAt ? new Date(r.completedAt).toLocaleDateString() : ""}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-6 text-right">
-                          <span className="text-[12px] font-black text-slate-600 inline-block bg-slate-100 px-2 py-1 rounded">
-                            {getLOI(r.startedAt, r.completedAt)}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                      {/* # */}
+                      <TableCell className="text-muted-foreground text-sm w-10">
+                        {index + 1}
+                      </TableCell>
+
+                      {/* Supplier UID (Incoming) — what supplier sent */}
+                      <TableCell>
+                        <span className="font-mono text-xs text-blue-600 dark:text-blue-400">
+                          {row.supplierRid || '—'}
+                        </span>
+                      </TableCell>
+
+                      {/* Supplier */}
+                      <TableCell>
+                        <div className="text-sm font-medium">{row.supplierName || '—'}</div>
+                        <div className="text-xs text-muted-foreground">{row.supplierCode || '—'}</div>
+                      </TableCell>
+
+                      {/* Client UID Sent — what we sent to client */}
+                      <TableCell>
+                        <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">
+                          {row.clientRid || '—'}
+                        </span>
+                      </TableCell>
+
+                      {/* Project */}
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {row.projectCode || '—'}
+                        </Badge>
+                      </TableCell>
+
+                      {/* IP Address */}
+                      <TableCell>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {row.ipAddress || '—'}
+                        </span>
+                      </TableCell>
+
+                      {/* Device */}
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm">
+                          {row.deviceType === 'Mobile' && <Smartphone className="h-3 w-3 text-muted-foreground" />}
+                          {row.deviceType === 'Tablet' && <TabletIcon className="h-3 w-3 text-muted-foreground" />}
+                          {row.deviceType === 'Desktop' && <Monitor className="h-3 w-3 text-muted-foreground" />}
+                          {!row.deviceType && <Monitor className="h-3 w-3 text-muted-foreground" />}
+                          <span className="text-xs">{row.deviceType || 'Unknown'}</span>
+                        </div>
+                      </TableCell>
+
+                      {/* User Agent — truncated with tooltip */}
+                      <TableCell className="max-w-[160px]">
+                        <span
+                          title={row.userAgent || ''}
+                          className="text-xs text-muted-foreground truncate block"
+                        >
+                          {row.userAgent
+                            ? row.userAgent.slice(0, 35) + (row.userAgent.length > 35 ? '...' : '')
+                            : '—'
+                          }
+                        </span>
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell>
+                        <StatusBadge status={row.status || 'started'} />
+                      </TableCell>
+
+                      {/* Timestamp */}
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {row.startedAt
+                          ? new Date(row.startedAt).toLocaleString('en-US', {
+                            month: 'short',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true,
+                          })
+                          : '—'
+                        }
+                      </TableCell>
+
+                    </TableRow>
+                  ))}
                   {!isLoading && filteredResponses?.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={12} className="h-64 text-center">
