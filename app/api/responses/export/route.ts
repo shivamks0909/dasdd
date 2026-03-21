@@ -36,14 +36,9 @@ const handler = async (req: NextRequest, _user: AuthUser) => {
     const export_mode   = searchParams.get('export_mode')   || 'all'
 
     // Fetch data from InsForge
-    let query = insforge.database.from('respondents').select(`
-      id, supplier_rid, supplier_name, supplier_code,
-      client_rid, project_code, country_code,
-      ip_address, device_type, browser, os, user_agent,
-      status, s2s_token, s2s_verified, s2s_verified_at,
-      s2s_verified_ip, s2s_payload, is_fake_suspected, fake_reason,
-      oi_session, started_at, completed_at
-    `).order('started_at', { ascending: false }).limit(20000)
+    let query = insforge.database.from('respondents')
+      .select('*')
+      .order('started_at', { ascending: false }).limit(20000)
 
     if (project_code)  query = query.eq('project_code',    project_code)
     if (supplier_code) query = query.eq('supplier_code',   supplier_code)
@@ -56,10 +51,17 @@ const handler = async (req: NextRequest, _user: AuthUser) => {
     const { data, error } = await query
     if (error) throw error
 
-    const rows = data || []
+    const { data: sups } = await insforge.database.from('suppliers').select('code, name')
+    const supplierMap = new Map((sups || []).map((s:any) => [s.code, s.name]))
+
+    const rows = (data || []).map((r:any) => ({
+      ...r,
+      supplier_name: supplierMap.get(r.supplier_code) || r.supplier_code
+    }))
+
     const total      = rows.length
     const complete   = rows.filter((r: any) => r.status === 'complete').length
-    const security   = rows.filter((r: any) => r.status === 'security').length
+    const security   = rows.filter((r: any) => r.status === 'security-terminate' || r.status === 'security').length
     const fake       = rows.filter((r: any) => r.is_fake_suspected).length
     const verified   = rows.filter((r: any) => r.s2s_verified).length
     const ir         = total > 0 ? ((complete / total) * 100).toFixed(1) + '%' : '0%'
@@ -173,7 +175,7 @@ const handler = async (req: NextRequest, _user: AuthUser) => {
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
     const filename = `OpinionInsights_Report_${now.toISOString().replace(/[:.]/g, '-').slice(0, 19)}.xlsx`
     
-    return new Response(buf, {
+    return new NextResponse(buf, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="${filename}"`,
