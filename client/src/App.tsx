@@ -127,6 +127,9 @@ function Router() {
       <Route path="/pages/quotafull" component={QuotaFullPageV2} />
       <Route path="/pages/security" component={SecurityPageV2} />
       <Route path="/pages/duplicate" component={DuplicatePageV2} />
+      <Route path="/pages/duplicate-string" component={DuplicateStringPage} />
+      <Route path="/pages/security-terminate" component={SecurityTerminatePage} />
+      <Route path="/pages/duplicate-ip" component={DuplicateIpPage} />
       <Route path="/pages/project-closed" component={ProjectClosedPageV2} />
       <Route path="/pages/country-unavailable" component={CountryUnavailablePageV2} />
       <Route path="/pages/geo-mismatch" component={GeoMismatchPageV2} />

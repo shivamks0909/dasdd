@@ -26,12 +26,16 @@ export async function GET(req: NextRequest) {
     'terminate': 'terminate',
     'quota': 'quotafull',
     'quotafull': 'quotafull',
-    'security_terminate': 'security',
-    'security-terminate': 'security',
-    'duplicate_ip': 'security',
-    'duplicate_string': 'security',
+    'security': 'security',
+    'security_terminate': 'security-terminate',
+    'security-terminate': 'security-terminate',
+    'duplicate': 'duplicate',
+    'duplicate_ip': 'duplicate-ip',
+    'duplicate-ip': 'duplicate-ip',
+    'duplicate_string': 'duplicate-string',
+    'duplicate-string': 'duplicate-string',
   };
-  const statusPath = pathMap[type.toLowerCase()] || type;
+  const statusPath = pathMap[type.toLowerCase()] || type.toLowerCase().replace('_', '-');
 
   // Skip DB for temporary placeholder tests ONLY (not PRJXXXX anymore)
   const isPlaceholder = code.startsWith("TEST_PLACEHOLDER_SKIP_DB");
