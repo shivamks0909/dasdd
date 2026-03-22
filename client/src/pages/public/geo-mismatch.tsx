@@ -1,6 +1,7 @@
 import React from "react";
-import { QuirkyOutcomeView } from "@/components/public/QuirkyOutcomeView";
+import { WavyOutcomeView } from "@/components/public/WavyOutcomeView";
 
 export default function GeoMismatchPage() {
-  return <QuirkyOutcomeView status="Geo Mismatch" statusKeyword="mismatch" />;
+  return <WavyOutcomeView status="Geo Mismatch" statusKeyword="security" />;
 }
+

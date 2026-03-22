@@ -1,6 +1,7 @@
 import React from "react";
-import { QuirkyOutcomeView } from "@/components/public/QuirkyOutcomeView";
+import { WavyOutcomeView } from "@/components/public/WavyOutcomeView";
 
 export default function CountryUnavailablePage() {
-  return <QuirkyOutcomeView status="Country Unavailable" statusKeyword="blocked" />;
+  return <WavyOutcomeView status="Country Unavailable" statusKeyword="security" />;
 }
+

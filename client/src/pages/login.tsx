@@ -6,7 +6,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { User, Lock, Eye, EyeOff, ArrowRight, Loader2, ShieldCheck } from "lucide-react";
-import { BackgroundPaths } from "@/components/ui/background-paths";
+import { WavyBackground } from "@/components/ui/wavy-background";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +25,7 @@ interface GlassInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 const GlassInput = React.forwardRef<HTMLInputElement, GlassInputProps>(
   ({ icon, rightSlot, className, ...props }, ref) => (
-    <div className="flex items-center gap-3 w-full rounded-2xl px-5 py-4 bg-white/10 border border-white/20 focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/10 transition-all duration-300 shadow-sm">
+    <div className="flex items-center gap-3 w-full rounded-2xl px-5 py-4 bg-white/10 border border-white/20 focus-within:border-sky-500/50 focus-within:ring-4 focus-within:ring-sky-500/10 transition-all duration-300 shadow-sm">
       <span className="text-slate-400 flex-shrink-0">{icon}</span>
       <input
         ref={ref}
@@ -74,16 +74,19 @@ export default function LoginPage() {
   const onSubmit = (data: LoginForm) => loginMutation.mutate(data);
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-black font-sans">
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <BackgroundPaths title="OpinionInsights" />
-      </div>
-
+    <WavyBackground
+      className="w-full flex items-center justify-center p-4"
+      containerClassName="min-h-screen"
+      backgroundFill="#000000"
+      colors={["#38bdf8", "#818cf8", "#c084fc", "#e879f9", "#22d3ee"]}
+      waveOpacity={0.4}
+      blur={12}
+    >
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-md mx-auto p-10 bg-white/10 backdrop-blur-3xl border border-white/20 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)]"
+        className="relative z-10 w-full max-w-md mx-auto p-10 bg-white/5 backdrop-blur-3xl border border-white/20 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)]"
       >
         {/* Header */}
         <div className="flex flex-col items-center mb-10 text-center">
@@ -91,7 +94,7 @@ export default function LoginPage() {
             initial={{ scale: 0, rotate: -10 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", bounce: 0.5, delay: 0.1 }}
-            className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20 mb-6"
+            className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/20 mb-6"
           >
             <ShieldCheck className="w-8 h-8 text-white" />
           </motion.div>
@@ -137,7 +140,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="text-slate-400 hover:text-primary transition-colors p-1"
+                  className="text-slate-400 hover:text-sky-400 transition-colors p-1"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -160,8 +163,8 @@ export default function LoginPage() {
               disabled={loginMutation.isPending}
               className={cn(
                 "w-full h-14 flex items-center justify-center gap-3 rounded-2xl",
-                "bg-slate-900 text-white font-bold text-sm tracking-wide",
-                "hover:bg-slate-800 active:scale-[0.98] transition-all duration-200 shadow-xl shadow-slate-900/10",
+                "bg-white/10 text-white font-bold text-sm tracking-wide border border-white/20",
+                "hover:bg-white/20 active:scale-[0.98] transition-all duration-200 shadow-xl",
                 "disabled:opacity-50 disabled:cursor-not-allowed"
               )}
             >
@@ -173,8 +176,7 @@ export default function LoginPage() {
             </button>
           </motion.div>
         </form>
-        
       </motion.div>
-    </div>
+    </WavyBackground>
   );
 }
