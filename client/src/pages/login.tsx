@@ -6,10 +6,11 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { User, Lock, Eye, EyeOff, ArrowRight, Loader2, ShieldCheck } from "lucide-react";
-import { WavyBackground } from "@/components/ui/wavy-background";
+import { BackgroundPaths } from "@/components/ui/background-paths";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
 
 // ── Schema ─────────────────────────────────────────────────────────────────
 const loginSchema = z.object({
@@ -74,14 +75,10 @@ export default function LoginPage() {
   const onSubmit = (data: LoginForm) => loginMutation.mutate(data);
 
   return (
-    <WavyBackground
-      className="w-full flex items-center justify-center p-4"
-      containerClassName="min-h-screen"
-      backgroundFill="#000000"
-      colors={["#38bdf8", "#818cf8", "#c084fc", "#e879f9", "#22d3ee"]}
-      waveOpacity={0.4}
-      blur={12}
-    >
+    <div className="relative min-h-screen w-full flex items-center justify-center p-4 bg-[#000000] overflow-hidden">
+
+      <BackgroundPaths title="OpinionInsights Login" />
+
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -177,6 +174,7 @@ export default function LoginPage() {
           </motion.div>
         </form>
       </motion.div>
-    </WavyBackground>
+    </div>
+
   );
 }

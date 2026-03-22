@@ -1,12 +1,7 @@
-import { LandingResultLayout } from "@/components/landing-result-layout";
+import React from "react";
+import { WavyOutcomeView } from "@/components/public/WavyOutcomeView";
 
 export default function TerminatePage() {
-  return (
-    <LandingResultLayout
-      title="Survey Terminated"
-      badgeText="Terminated"
-      description="Your survey session has been terminated. You did not qualify for this survey."
-      theme="error"
-    />
-  );
+  return <WavyOutcomeView status="Terminated" statusKeyword="terminate" />;
 }
+
