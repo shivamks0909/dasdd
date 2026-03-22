@@ -8,12 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/admin/dashboard";
-import CompletePage from "@/pages/complete";
-import TerminatePage from "@/pages/terminate";
-import QuotaFullPage from "@/pages/quotafull";
-import SecurityTerminatePage from "@/pages/security-terminate";
-import DuplicateIpPage from "@/pages/duplicate-ip";
-import DuplicateStringPage from "@/pages/duplicate-string";
+// Removed legacy outcome page imports to favor V2 wavy designs
 import LandingPage from "@/pages/LandingPage";
 import PrescreenerPage from "@/pages/prescreener";
 import MockSurvey from "@/pages/MockSurvey";
@@ -127,20 +122,20 @@ function Router() {
       <Route path="/pages/quotafull" component={QuotaFullPageV2} />
       <Route path="/pages/security" component={SecurityPageV2} />
       <Route path="/pages/duplicate" component={DuplicatePageV2} />
-      <Route path="/pages/duplicate-string" component={DuplicateStringPage} />
-      <Route path="/pages/security-terminate" component={SecurityTerminatePage} />
-      <Route path="/pages/duplicate-ip" component={DuplicateIpPage} />
+      <Route path="/pages/duplicate-string" component={DuplicatePageV2} />
+      <Route path="/pages/security-terminate" component={SecurityPageV2} />
+      <Route path="/pages/duplicate-ip" component={DuplicatePageV2} />
       <Route path="/pages/project-closed" component={ProjectClosedPageV2} />
       <Route path="/pages/country-unavailable" component={CountryUnavailablePageV2} />
       <Route path="/pages/geo-mismatch" component={GeoMismatchPageV2} />
 
-      {/* Legacy / User/Mock Routes */}
-      <Route path="/complete" component={CompletePage} />
-      <Route path="/terminate" component={TerminatePage} />
-      <Route path="/quotafull" component={QuotaFullPage} />
-      <Route path="/security-terminate" component={SecurityTerminatePage} />
-      <Route path="/duplicate-ip" component={DuplicateIpPage} />
-      <Route path="/duplicate-string" component={DuplicateStringPage} />
+      {/* Legacy / User/Mock Routes - Now using Wavy UI */}
+      <Route path="/complete" component={CompletePageV2} />
+      <Route path="/terminate" component={TerminatePageV2} />
+      <Route path="/quotafull" component={QuotaFullPageV2} />
+      <Route path="/security-terminate" component={SecurityPageV2} />
+      <Route path="/duplicate-ip" component={DuplicatePageV2} />
+      <Route path="/duplicate-string" component={DuplicatePageV2} />
       <Route path="/paused" component={PausedPage} />
       <Route path="/landing" component={LandingPage} />
       <Route path="/prescreener/:session" component={PrescreenerPage} />
