@@ -435,5 +435,5 @@ export type DashboardStats = {
   securityToday: number;
   conversionRateToday: string;
   
-  activityData: { date: string; count: number }[];
+  activityData: any[]; // e.g. { name: string, value: number }[]
 };

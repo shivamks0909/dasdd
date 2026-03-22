@@ -1,0 +1,119 @@
+﻿
+> rest-express@1.0.0 build
+> next build
+
+node.exe : ΓÜá Warning: Next.js inferred your workspace root, but 
+it may not be correct.
+At line:1 char:1
++ & "E:\Program Files\nodejs/node.exe" "E:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~
+    + CategoryInfo          : NotSpecified: (ΓÜá Warning: Ne...not 
+    be correct.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ We detected multiple lockfiles and selected the directory of 
+E:\Users\shiva\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js 
+config, or consider removing one of the lockfiles if it's not 
+needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config
+-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * 
+E:\Users\shiva\Downloads\Opinion-Routing-Platform\package-lock.json
+
+Γû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.production, .env
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 10.0s
+  Running TypeScript ...
+  Collecting page data using 3 workers ...
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ΓÜÖ∩╕Å  write to custom object with { processEnv: myObject }
+InsForge Client Initialized: {
+  baseUrl: 'https://cpim43si.us-west.insforge.app',
+  hasDatabase: true,
+  hasAuth: true,
+  hasStorage: true
+}
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ΓÜÖ∩╕Å  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ΓÜÖ∩╕Å  override existing env vars with { override: true }
+InsForge Client Initialized: {
+  baseUrl: 'https://cpim43si.us-west.insforge.app',
+  hasDatabase: true,
+  hasAuth: true,
+  hasStorage: true
+}
+InsForge Client Initialized: {
+  baseUrl: 'https://cpim43si.us-west.insforge.app',
+  hasDatabase: true,
+  hasAuth: true,
+  hasStorage: true
+}
+DATABASE_URL Protocol Check: postgresql://po...
+  Generating static pages using 3 workers (0/42) ...
+  Generating static pages using 3 workers (10/42) 
+  Generating static pages using 3 workers (20/42) 
+  Generating static pages using 3 workers (31/42) 
+Γ£ô Generating static pages using 3 workers (42/42) in 265.4ms
+  Finalizing page optimization ...
+
+Route (app)
+Γöî Γùï /_not-found
+Γö£ ╞Æ /[[...slug]]
+Γö£ ╞Æ /api/admin/responses
+Γö£ ╞Æ /api/admin/responses/export
+Γö£ ╞Æ /api/admin/responses/export-excel
+Γö£ ╞Æ /api/admin/stats
+Γö£ ╞Æ /api/admin/suppliers/access
+Γö£ ╞Æ /api/admin/suppliers/users
+Γö£ ╞Æ /api/admin/system-pulse
+Γö£ ╞Æ /api/auth/login
+Γö£ ╞Æ /api/auth/logout
+Γö£ ╞Æ /api/auth/me
+Γö£ ╞Æ /api/clients
+Γö£ ╞Æ /api/complete
+Γö£ ╞Æ /api/debug/country-surveys
+Γö£ ╞Æ /api/debug/respondents
+Γö£ ╞Æ /api/link-generator/assignments
+Γö£ ╞Æ /api/link-generator/assignments/[id]
+Γö£ ╞Æ /api/link-generator/assignments/export
+Γö£ ╞Æ /api/projects
+Γö£ ╞Æ /api/projects/[id]
+Γö£ ╞Æ /api/projects/[id]/s2s-config
+Γö£ ╞Æ /api/projects/[id]/s2s-logs
+Γö£ ╞Æ /api/projects/[id]/surveys
+Γö£ ╞Æ /api/projects/quick-create
+Γö£ ╞Æ /api/quotafull
+Γö£ ╞Æ /api/respondents
+Γö£ ╞Æ /api/responses/export
+Γö£ ╞Æ /api/s2s/callback
+Γö£ ╞Æ /api/security-terminate
+Γö£ ╞Æ /api/supplier/auth/login
+Γö£ ╞Æ /api/supplier/auth/logout
+Γö£ ╞Æ /api/supplier/auth/me
+Γö£ ╞Æ /api/supplier/dashboard
+Γö£ ╞Æ /api/supplier/responses
+Γö£ ╞Æ /api/suppliers
+Γö£ ╞Æ /api/suppliers/[id]
+Γö£ ╞Æ /api/surveys/[id]
+Γö£ ╞Æ /api/terminate
+Γö£ ╞Æ /complete
+Γö£ Γùï /pages/complete
+Γö£ Γùï /pages/quotafull
+Γö£ Γùï /pages/security
+Γö£ Γùï /pages/terminate
+Γö£ ╞Æ /quotafull
+Γö£ ╞Æ /r/[code]
+Γö£ ╞Æ /security-terminate
+Γö£ ╞Æ /status
+Γö£ ╞Æ /t/[code]
+Γö£ ╞Æ /terminate
+Γöö ╞Æ /track
+
+
+Γùï  (Static)   prerendered as static content
+╞Æ  (Dynamic)  server-rendered on demand
+

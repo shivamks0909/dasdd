@@ -1,6 +1,6 @@
 import React from "react";
-import { QuirkyOutcomeView } from "@/components/public/QuirkyOutcomeView";
+import { WavyOutcomeView } from "@/components/public/WavyOutcomeView";
 
 export default function CompletePage() {
-  return <QuirkyOutcomeView status="Complete" statusKeyword="complete" />;
+  return <WavyOutcomeView status="Complete" statusKeyword="complete" />;
 }

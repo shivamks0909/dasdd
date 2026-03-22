@@ -60,8 +60,8 @@ const handler = async (req: NextRequest, _user: AuthUser) => {
     }))
 
     const total      = rows.length
-    const complete   = rows.filter((r: any) => r.status === 'complete').length
-    const security   = rows.filter((r: any) => r.status === 'security-terminate' || r.status === 'security').length
+    const complete   = rows.filter((r: any) => r.status === 'complete' || r.status === 'completed').length
+    const security   = rows.filter((r: any) => ['security-terminate', 'security', 'fraud', 'security_terminate'].includes(r.status)).length
     const fake       = rows.filter((r: any) => r.is_fake_suspected).length
     const verified   = rows.filter((r: any) => r.s2s_verified).length
     const ir         = total > 0 ? ((complete / total) * 100).toFixed(1) + '%' : '0%'
@@ -94,7 +94,7 @@ const handler = async (req: NextRequest, _user: AuthUser) => {
       const k = r.supplier_code || 'Unknown'
       if (!supMap[k]) supMap[k] = { name: r.supplier_name || r.supplier_code, total: 0, complete: 0, fake: 0 }
       supMap[k].total++
-      if (r.status === 'complete') supMap[k].complete++
+      if (r.status === 'complete' || r.status === 'completed') supMap[k].complete++
       if (r.is_fake_suspected) supMap[k].fake++
     })
     const summaryRows = [['Rank', 'Supplier', 'Total', 'Complete', 'IR', 'Fraud Rate']]
@@ -134,7 +134,7 @@ const handler = async (req: NextRequest, _user: AuthUser) => {
       const k = r.country_code || '??'
       if (!ctryMap[k]) ctryMap[k] = { total: 0, complete: 0 }
       ctryMap[k].total++
-      if (r.status === 'complete') ctryMap[k].complete++
+      if (r.status === 'complete' || r.status === 'completed') ctryMap[k].complete++
     })
     const ctryRows = [['Rank', 'Country', 'Total', 'Complete', 'IR']]
     Object.entries(ctryMap).sort((a:any, b:any) => b[1].total - a[1].total).forEach(([code, c]: any, i) => {
@@ -146,10 +146,10 @@ const handler = async (req: NextRequest, _user: AuthUser) => {
     const dayMap: Record<string, any> = {}
     rows.forEach((r: any) => {
       if (!r.started_at) return
-      const d = r.started_at.slice(0, 10)
+      const d = String(r.started_at).slice(0, 10)
       if (!dayMap[d]) dayMap[d] = { total: 0, complete: 0 }
       dayMap[d].total++
-      if(r.status === 'complete') dayMap[d].complete++
+      if(r.status === 'complete' || r.status === 'completed') dayMap[d].complete++
     })
     const trendRows = [['Date', 'Total', 'Complete', 'IR']]
     Object.entries(dayMap).sort((a:any, b:any) => b[0].localeCompare(a[0])).forEach(([date, d]: any) => {
@@ -172,13 +172,14 @@ const handler = async (req: NextRequest, _user: AuthUser) => {
     ])
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([s2sHeaders, ...s2sRows]), 'S2S Verification Log')
 
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
     const filename = `OpinionInsights_Report_${now.toISOString().replace(/[:.]/g, '-').slice(0, 19)}.xlsx`
     
     return new NextResponse(buf, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Content-Disposition': `attachment; filename="${filename}"`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
       }
     })
   } catch (err: any) {

@@ -15,13 +15,14 @@ import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { s2sLogs, projectS2sConfig, respondents, activityLogs, type Supplier, type Project, type Respondent } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { generateS2SToken, verifyS2SToken } from "./s2s";
 import { generateExcelReport } from "./lib/export-excel-server";
 import { routerService } from "./lib/router-service";
 
 import { storage, seedAdmin } from "./storage";
 import { processTrackingRequest } from "./lib/tracking-core";
+import { insforge } from "./insforge";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -797,11 +798,9 @@ export async function registerRoutes(
 
     let finalStatus = status;
 
-    // S2S Verification Check
+    // S2S Verification Check (using InsForge HTTP SDK to avoid TCP timeout)
     if (status === 'complete') {
-      const s2sConfig = await db.query.projectS2sConfig.findFirst({
-        where: eq(projectS2sConfig.projectCode, respondent.projectCode)
-      });
+      const s2sConfig = await storage.getS2sConfig(respondent.projectCode);
       if (s2sConfig && s2sConfig.requireS2S && !respondent.s2sVerified) {
         // Fraud detected! Mark as security-terminate and log alert
         finalStatus = 'security-terminate';
@@ -810,11 +809,8 @@ export async function registerRoutes(
           eventType: 'security_alert',
           meta: { details: `Fraud attempt blocked: Manual client complete without S2S verification.` }
         });
-        
-        // Also update respondent fraud flag
-        await db.update(respondents)
-          .set({ fraudScore: "1.0", status: 'fraud' })
-          .where(eq(respondents.oiSession, respondent.oiSession));
+        // Update respondent fraud flag via InsForge HTTP
+        await insforge.database.from('respondents').update({ fraud_score: '1.0', status: 'fraud' }).eq('oi_session', respondent.oiSession);
       }
     }
 
@@ -844,6 +840,51 @@ export async function registerRoutes(
   app.get("/terminate", (req, res) => handleCallback(req, res, "terminate"));
   app.get("/quotafull", (req, res) => handleCallback(req, res, "quotafull"));
   app.get("/security-terminate", (req, res) => handleCallback(req, res, "security-terminate"));
+
+  // Unified Status Endpoint using UID and Project Code
+  // Uses InsForge HTTP SDK to avoid direct TCP database connections that time out locally
+  app.get("/status", async (req: Request, res: Response) => {
+    const { code, uid, type } = req.query;
+    if (!code || !uid || !type) {
+      return res.status(400).send("Missing required parameters: code, uid, type");
+    }
+
+    try {
+      // Use InsForge HTTP SDK instead of raw Drizzle (avoids ETIMEDOUT on local)
+      const { data: rows, error } = await insforge.database
+        .from('respondents')
+        .select('*')
+        .eq('project_code', (code as string).toUpperCase())
+        .eq('supplier_rid', uid as string)
+        .order('started_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      const raw = rows?.[0];
+      if (!raw) {
+        // No session found - redirect straight to the internal status landing page
+        let statusToUse = (type as string).toLowerCase();
+        if (statusToUse === 'quota') statusToUse = 'quotafull';
+        else if (['security_terminate','duplicate','duplicate_ip','duplicate_string'].includes(statusToUse)) statusToUse = 'security';
+        const landingPath = (routerService.internalPathMap as any)[statusToUse] || '/pages/terminate';
+        return res.redirect(`${landingPath}?pid=${(code as string).toUpperCase()}&uid=${uid}`);
+      }
+
+      // Map snake_case to camelCase for handleCallback compatibility
+      req.query.oi_session = raw.oi_session;
+
+      // Map 'type' to our internal status logic
+      let statusToUse = (type as string).toLowerCase();
+      if (statusToUse === 'quota') statusToUse = 'quotafull';
+      else if (['security_terminate','duplicate','duplicate_ip','duplicate_string'].includes(statusToUse)) statusToUse = 'security-terminate';
+
+      return handleCallback(req, res, statusToUse);
+    } catch (e) {
+      console.error("Error processing /status endpoint:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
 
   // API to fetch respondent info for landing pages (without heavy URL params)
   app.get("/api/respondent-stats/:oiSession", async (req: Request, res: Response) => {

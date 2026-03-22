@@ -1,12 +1,6 @@
-import { LandingResultLayout } from "@/components/landing-result-layout";
+import React from "react";
+import { WavyOutcomeView } from "@/components/public/WavyOutcomeView";
 
 export default function SecurityTerminatePage() {
-  return (
-    <LandingResultLayout
-      title="Security Terminated"
-      badgeText="Security Terminate"
-      description="Your session has been terminated due to a security check failure."
-      theme="dark"
-    />
-  );
+  return <WavyOutcomeView status="Security Terminate" statusKeyword="security" />;
 }

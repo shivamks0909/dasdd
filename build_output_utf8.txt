@@ -1,0 +1,62 @@
+﻿
+> rest-express@1.0.0 build
+> next build
+
+node.exe : ΓÜá Warning: Next.js inferred your workspace root, but it 
+may not be correct.
+At line:1 char:1
++ & "E:\Program Files\nodejs/node.exe" "E:\Program Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ΓÜá Warning: Ne...not be c 
+   orrect.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ We detected multiple lockfiles and selected the directory of 
+E:\Users\shiva\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, 
+or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/t
+urbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * E:\Users\shiva\Downloads\Opinion-Routing-Platform\package-lock.json
+
+Γû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.production, .env
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 17.1s
+  Running TypeScript ...
+Failed to compile.
+
+./server/lib/tracking-core.ts:175:36
+Type error: Argument of type '{ oiSession: 
+`${string}-${string}-${string}-${string}-${string}`; projectCode: 
+string; supplierCode: string; supplierRid: string; clientRid: string; 
+status: string; surveyUrl: string; ipAddress: string | null; ... 4 more 
+...; extraParams: Record<...>; }' is not assignable to parameter of 
+type '{ status: string; projectCode: string; supplierRid: string; 
+oiSession: string; s2sVerified: boolean; fraudScore: number; 
+isFakeSuspected: boolean; countryCode?: string | null | undefined; ... 
+17 more ...; redirectStatus?: string | ... 1 more ... | undefined; }'.
+  Property 'isFakeSuspected' is missing in type '{ oiSession: 
+`${string}-${string}-${string}-${string}-${string}`; projectCode: 
+string; supplierCode: string; supplierRid: string; clientRid: string; 
+status: string; surveyUrl: string; ipAddress: string | null; ... 4 more 
+...; extraParams: Record<...>; }' but required in type '{ status: 
+string; projectCode: string; supplierRid: string; oiSession: string; 
+s2sVerified: boolean; fraudScore: number; isFakeSuspected: boolean; 
+countryCode?: string | null | undefined; ... 17 more ...; 
+redirectStatus?: string | ... 1 more ... | undefined; }'.
+
+[0m [90m 173 |[39m     [90m// 8. Save respondent[39m
+ [90m 174 |[39m     console[33m.[39mlog([32m`[TrackingCore] Saving 
+respondent ${oiSession}...`[39m)[33m;[39m
+[31m[1m>[22m[39m[90m 175 |[39m     [36mawait[39m 
+storage[33m.[39mcreateRespondent({
+ [90m     |[39m                                    
+[31m[1m^[22m[39m
+ [90m 176 |[39m       oiSession[33m,[39m
+ [90m 177 |[39m       projectCode[33m,[39m
+ [90m 178 |[39m       supplierCode[33m,[39m[0m
+Next.js build worker exited with code: 1 and signal: null

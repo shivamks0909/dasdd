@@ -19,11 +19,15 @@ export function setupAuth(app: Express) {
 
   console.log("setupAuth: process.env.DATABASE_URL is", process.env.DATABASE_URL ? "defined" : "undefined");
 
-  let sessionStore: any = undefined; // undefined = express-session MemoryStore (dev only)
+  let sessionStore: any = undefined; // MemoryStore — safe for local dev
   const dbUrl = process.env.DATABASE_URL;
-  const isRealDb = dbUrl && !dbUrl.includes("placeholder") && !dbUrl.includes("localhost:5432");
-  try {
-    if (isRealDb) {
+  // NOTE: connect-pg-simple requires a direct TCP connection to Postgres (port 5432).
+  // InsForge's database is only accessible via HTTP REST (not raw TCP) from localhost,
+  // so using PgSession causes "Connection timeout" on login. We use MemoryStore locally.
+  // On Vercel (or when DATABASE_URL includes ?pgbouncer=true), re-enable Pg session store.
+  const isRealDb = false; // Force MemoryStore locally to avoid ETIMEDOUT on InsForge
+  if (isRealDb && dbUrl) {
+    try {
       console.log("setupAuth: Creating PgSession store...");
       sessionStore = new PgSession({
         pool,
@@ -32,12 +36,12 @@ export function setupAuth(app: Express) {
         pruneSessionInterval: false,
         errorLog: console.error
       });
-    } else {
-      console.warn("setupAuth: No real DATABASE_URL. Using MemoryStore (dev mode).");
+    } catch (err) {
+      console.error("setupAuth: Error creating session store, falling back to MemoryStore:", err);
+      sessionStore = undefined;
     }
-  } catch (err) {
-    console.error("setupAuth: Error creating session store, falling back to MemoryStore:", err);
-    sessionStore = undefined;
+  } else {
+    console.warn("setupAuth: Using MemoryStore (local dev mode — sessions reset on restart).");
   }
 
   app.use(

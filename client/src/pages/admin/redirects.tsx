@@ -295,7 +295,7 @@ export default function ToolLinksPage() {
 
               <div className="flex gap-3">
                 <GlassButton
-                  className="rounded-2xl px-8 font-black uppercase tracking-widest text-[10px] bg-primary text-white shadow-lg shadow-primary/40"
+                  className="rounded-2xl px-8 font-black uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-lg shadow-primary/40"
                   onClick={() => copyToClipboard(`${baseUrl}/supplier/login`, "Supplier Portal")}
                 >
                   <Copy className="w-4 h-4 mr-2" />

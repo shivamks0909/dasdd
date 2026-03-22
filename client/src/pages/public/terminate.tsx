@@ -1,6 +1,6 @@
 import React from "react";
-import { QuirkyOutcomeView } from "@/components/public/QuirkyOutcomeView";
+import { WavyOutcomeView } from "@/components/public/WavyOutcomeView";
 
 export default function TerminatePage() {
-  return <QuirkyOutcomeView status="Terminate" statusKeyword="terminate" />;
+  return <WavyOutcomeView status="Terminate" statusKeyword="terminate" />;
 }

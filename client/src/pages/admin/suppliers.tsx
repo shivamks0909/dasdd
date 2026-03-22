@@ -96,7 +96,7 @@ function EditSupplierDialog({ supplier }: { supplier: Supplier }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="p-3 text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100" title="Edit Supplier">
+        <button className="p-3 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-2xl transition-all" title="Edit Supplier">
           <Edit2 className="h-4 w-4" />
         </button>
       </DialogTrigger>
@@ -293,7 +293,7 @@ function SupplierUsersTab({ suppliers }: { suppliers: Supplier[] }) {
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={createMutation.isPending} className="h-12 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20">
+              <Button type="submit" disabled={createMutation.isPending} className="h-12 bg-primary text-primary-foreground rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/20">
                 {createMutation.isPending ? "Generating..." : "Grant Access"}
               </Button>
             </form>
@@ -602,15 +602,15 @@ export default function SuppliersPage() {
 
       <Tabs defaultValue="nexus" className="space-y-8">
         <TabsList className="bg-white/40 border border-slate-200/60 p-1.5 rounded-2xl backdrop-blur-3xl shadow-lg inline-flex">
-          <TabsTrigger value="nexus" className="rounded-xl px-8 py-3 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl transition-all flex items-center gap-2">
+          <TabsTrigger value="nexus" className="rounded-xl px-8 py-3 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xl transition-all flex items-center gap-2 text-slate-500 hover:text-slate-800">
             <Globe className="w-3.5 h-3.5" />
             Supplier Nexus
           </TabsTrigger>
-          <TabsTrigger value="users" className="rounded-xl px-8 py-3 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl transition-all flex items-center gap-2">
+          <TabsTrigger value="users" className="rounded-xl px-8 py-3 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xl transition-all flex items-center gap-2 text-slate-500 hover:text-slate-800">
             <Users className="w-3.5 h-3.5" />
             Portal Access
           </TabsTrigger>
-          <TabsTrigger value="access" className="rounded-xl px-8 py-3 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl transition-all flex items-center gap-2">
+          <TabsTrigger value="access" className="rounded-xl px-8 py-3 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xl transition-all flex items-center gap-2 text-slate-500 hover:text-slate-800">
             <ShieldCheck className="w-3.5 h-3.5" />
             Project Matrix
           </TabsTrigger>
@@ -621,7 +621,7 @@ export default function SuppliersPage() {
             <div className="flex justify-end">
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
-                  <button className="bg-primary text-white hover:bg-primary/90 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]">
+                  <button className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]">
                     <Plus className="h-4 w-4" />
                     Register Source
                   </button>
@@ -718,7 +718,7 @@ export default function SuppliersPage() {
                             <button 
                               type="submit" 
                               disabled={createMutation.isPending} 
-                              className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                              className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
                             >
                               {createMutation.isPending ? (
                                 <>
@@ -760,14 +760,14 @@ export default function SuppliersPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => setLocation(`/admin/link-generator?supplier=${supplier.id}`)}
-                            className="p-3 text-slate-300 hover:text-primary hover:bg-blue-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100"
+                            className="p-3 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-2xl transition-all"
                             title="View Assigned Links"
                           >
                             <LinkIcon className="h-4 w-4" />
                           </button>
                           <EditSupplierDialog supplier={supplier} />
                           <AlertDialogTrigger asChild>
-                            <button className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100">
+                            <button className="p-3 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all">
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </AlertDialogTrigger>

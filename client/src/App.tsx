@@ -143,7 +143,7 @@ function Router() {
       <Route path="/prescreener/:session" component={PrescreenerPage} />
       <Route path="/survey" component={MockSurvey} />
       <Route path="/debug/redirect-chain" component={RedirectDebugger} />
-      
+
       {/* Supplier Portal Routes */}
       <Route path="/supplier/login" component={SupplierLoginPage} />
       <Route path="/supplier/dashboard">

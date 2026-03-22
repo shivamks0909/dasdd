@@ -512,7 +512,20 @@ export class DatabaseStorage implements IStorage {
     return (data || []).map(mapRespondent);
   }
 
+  private static responsesCache: {
+    data: any[];
+    timestamp: number;
+    limit: number;
+  } | null = null;
+
   async getEnrichedRespondents(limit = 100): Promise<any[]> {
+    const CACHE_TTL = 10000; // 10 seconds
+    const now = Date.now();
+
+    if (DatabaseStorage.responsesCache && (now - DatabaseStorage.responsesCache.timestamp < CACHE_TTL) && limit <= DatabaseStorage.responsesCache.limit) {
+      return DatabaseStorage.responsesCache.data.slice(0, limit);
+    }
+
     const { data: respondents } = await insforge.database.from("respondents")
       .select("*")
       .order("started_at", { ascending: false })
@@ -526,11 +539,19 @@ export class DatabaseStorage implements IStorage {
     const { data: projects } = await insforge.database.from("projects").select("project_code, project_name");
     const projectMap = new Map((projects || []).map(p => [p.project_code, p.project_name]));
 
-    return respondents.map(r => ({
+    const enriched = respondents.map(r => ({
       ...mapRespondent(r),
       supplierName: r.supplier_code ? supplierMap.get(r.supplier_code) || "Direct Traffic" : "Direct Traffic",
       projectName: projectMap.get(r.project_code) || r.project_code
     }));
+
+    DatabaseStorage.responsesCache = {
+      data: enriched,
+      timestamp: now,
+      limit
+    };
+
+    return enriched;
   }
 
   async getRespondentsByProject(projectCode: string): Promise<Respondent[]> {
@@ -561,35 +582,95 @@ export class DatabaseStorage implements IStorage {
     return data || [];
   }
 
-  // Internal stats calculation
-  async getDashboardStats() {
+  private static dashboardCache: {
+    data: DashboardStats;
+    timestamp: number;
+  } | null = null;
+
+  async getDashboardStats(): Promise<DashboardStats> {
+    const CACHE_TTL = 30000; // 30 seconds
+    const now = Date.now();
+
+    if (DatabaseStorage.dashboardCache && (now - DatabaseStorage.dashboardCache.timestamp < CACHE_TTL)) {
+      return DatabaseStorage.dashboardCache.data;
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString();
+    const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString();
 
-    const { count: totalProjects } = await insforge.database.from("projects").select("*", { count: 'exact', head: true });
-    const { count: activeProjects } = await insforge.database.from("projects").select("*", { count: 'exact', head: true }).eq("status", "active");
-    
-    const { count: totalRespondents } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true });
-    const { count: completes } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "complete");
-    const { count: terminates } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "terminate");
-    const { count: quotafulls } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "quotafull");
-    const { count: securityTerminates } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "security-terminate");
+    // Parallelize all independent count queries
+    const [
+      { count: totalProjects },
+      { count: activeProjects },
+      { count: totalRespondents },
+      { count: completes },
+      { count: terminates },
+      { count: quotafulls },
+      { count: securityTerminates },
+      { count: clicksToday },
+      { count: completesToday },
+      { count: quotafullToday },
+      { count: terminatesToday },
+      { count: securityToday },
+      { count: duplicatesToday },
+      { count: inProgressToday },
+      { data: recentActivity }
+    ] = await Promise.all([
+      insforge.database.from("projects").select("*", { count: 'exact', head: true }),
+      insforge.database.from("projects").select("*", { count: 'exact', head: true }).eq("status", "active"),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["complete", "completed"]),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["terminate", "terminated", "disqualified"]),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["quotafull", "quota_full"]),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["security-terminate", "security", "fraud"]),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).gte("started_at", todayStr),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["complete", "completed"]).gte("started_at", todayStr),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["quotafull", "quota_full"]).gte("started_at", todayStr),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["terminate", "terminated", "disqualified"]).gte("started_at", todayStr),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["security-terminate", "security", "fraud"]).gte("started_at", todayStr),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "duplicate").gte("started_at", todayStr),
+      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "started").gte("started_at", todayStr),
+      insforge.database.from("respondents").select("started_at").gte("started_at", oneDayAgo)
+    ]);
 
-    // Today's stats
-    const { count: clicksToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).gte("started_at", todayStr);
-    const { count: completesToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "complete").gte("started_at", todayStr);
-    const { count: quotafullToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "quotafull").gte("started_at", todayStr);
-    const { count: terminatesToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "terminate").gte("started_at", todayStr);
-    const { count: securityToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "security-terminate").gte("started_at", todayStr);
-    const { count: duplicatesToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "duplicate").gte("started_at", todayStr);
-    const { count: inProgressToday } = await insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "started").gte("started_at", todayStr);
+    const irPercent = totalRespondents && totalRespondents > 0
+      ? ((completes || 0) / totalRespondents * 100).toFixed(1)
+      : "0.0";
 
     const conversionRateToday = clicksToday && clicksToday > 0 
       ? ((completesToday || 0) / clicksToday * 100).toFixed(1) + "%"
       : "0%";
 
-    return {
+    const hourlyData = new Array(24).fill(0);
+    const nowHour = new Date().getHours();
+    
+    if (recentActivity) {
+      recentActivity.forEach((r: any) => {
+        if (!r.started_at) return;
+        const hour = new Date(r.started_at).getHours();
+        let diff = nowHour - hour;
+        if (diff < 0) diff += 24;
+        const index = 23 - diff;
+        if (index >= 0 && index < 24) {
+          hourlyData[index]++;
+        }
+      });
+    }
+
+    const activityData = hourlyData.map((count, i) => {
+      const h = new Date();
+      h.setHours(nowHour - (23 - i));
+      return {
+        name: h.toLocaleTimeString([], { hour: '2-digit' }),
+        value: count,
+        date: h.toISOString(),
+        count
+      };
+    });
+
+    const stats: DashboardStats = {
       totalProjects: totalProjects || 0,
       activeProjects: activeProjects || 0,
       totalRespondents: totalRespondents || 0,
@@ -607,8 +688,15 @@ export class DatabaseStorage implements IStorage {
       securityToday: securityToday || 0,
       conversionRateToday,
       
-      activityData: [],
+      activityData,
     };
+
+    DatabaseStorage.dashboardCache = {
+      data: stats,
+      timestamp: now
+    };
+
+    return stats;
   }
 
   async getSystemPulseStats() {
@@ -618,9 +706,9 @@ export class DatabaseStorage implements IStorage {
     const activity = (last24h || []).map(mapRespondent);
     return {
       totalVolume: activity.length,
-      successChain: activity.filter(r => r.status === 'complete' && r.s2sVerified).length,
-      filteredOut: activity.filter(r => ['terminate', 'quotafull'].includes(r.status || '')).length,
-      securityAlerts: activity.filter(r => ['security-terminate', 'fraud'].includes(r.status || '')).length,
+      successChain: activity.filter(r => (r.status === 'complete' || r.status === 'completed') && r.s2sVerified).length,
+      filteredOut: activity.filter(r => ['terminate', 'terminated', 'quotafull', 'quota_full', 'disqualified'].includes(r.status || '')).length,
+      securityAlerts: activity.filter(r => ['security-terminate', 'security', 'fraud'].includes(r.status || '')).length,
       ratePerMinute: 0,
       recentActivity: activity.slice(0, 20)
     };
@@ -837,13 +925,20 @@ export class DatabaseStorage implements IStorage {
 
     return respondents.map(r => ({
       id: r.id,
-      projectId: r.projectCode,
+      oiSession: r.oiSession,
+      projectCode: r.projectCode,
       projectName: projectMap.get(r.projectCode) || "",
-      supplierId: r.supplierCode,
+      countryCode: r.countryCode,
+      supplierCode: r.supplierCode,
       supplierName: supplierMap.get(r.supplierCode || "") || "",
+      supplierRid: r.supplierRid,
+      clientRid: r.clientRid,
       status: r.status,
       ipAddress: r.ipAddress,
-      createdAt: r.startedAt
+      userAgent: r.userAgent,
+      startedAt: r.startedAt,
+      completedAt: r.completedAt,
+      fraudScore: r.fraudScore
     }));
   }
 

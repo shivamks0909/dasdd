@@ -131,7 +131,7 @@ function AddClientDialog({ onClientAdded }: { onClientAdded: (name: string) => v
                 )}
               />
               <DialogFooter className="pt-6">
-                <button type="submit" disabled={createMutation.isPending} className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all disabled:opacity-50">
+                <button type="submit" disabled={createMutation.isPending} className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all disabled:opacity-50">
                   {createMutation.isPending ? "Validating Path..." : "Onboard to Nexus"}
                 </button>
               </DialogFooter>
@@ -391,7 +391,7 @@ export default function ProjectFormPage() {
                     currentStep > i + 1
                       ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200"
                       : currentStep === i + 1
-                        ? "bg-primary text-white scale-110 shadow-xl shadow-primary/20 ring-4 ring-primary/5"
+                        ? "bg-primary text-primary-foreground scale-110 shadow-xl shadow-primary/20 ring-4 ring-primary/5"
                         : "bg-slate-100 text-slate-400"
                   )}>
                     {currentStep > i + 1 ? <CheckCircle2 className="size-5" /> : i + 1}
@@ -761,7 +761,7 @@ export default function ProjectFormPage() {
                     <button
                       onClick={handleSubmit}
                       disabled={submitting}
-                      className="h-16 px-16 bg-primary text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 flex items-center gap-4 transition-all hover:scale-[1.03] active:scale-95 disabled:opacity-50"
+                      className="h-16 px-16 bg-primary text-primary-foreground rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 flex items-center gap-4 transition-all hover:scale-[1.03] active:scale-95 disabled:opacity-50"
                     >
                       {submitting ? (
                         "Initializing Fleet..."

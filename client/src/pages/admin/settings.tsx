@@ -169,7 +169,7 @@ export default function SettingsPage() {
                     type="submit"
                     disabled={changePasswordMutation.isPending}
                     data-testid="button-change-password"
-                    className="bg-primary text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                    className="bg-primary text-primary-foreground px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                   >
                     {changePasswordMutation.isPending ? "Hashing..." : "Commit Update"}
                   </button>

@@ -19,7 +19,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { type Respondent } from "@shared/schema";
+import { StatCard } from "@/components/stat-card";
+import {
+  SunIcon,
+  CloudIcon,
+  RainIcon,
+  FogIcon,
+  ThunderIcon,
+  SunriseIcon,
+  RainbowIcon
+} from "@/components/ui/weather-icons";
+import { type DashboardStats, type Respondent } from "@shared/schema";
 
 interface EnrichedRespondent extends Respondent {
   supplierName?: string;
@@ -63,6 +73,35 @@ export default function ResponsesPage() {
     queryKey: ["/api/s2s/alerts"], // Reusing security alerts or we could add a dedicated endpoint if needed
     enabled: exporting, 
   });
+
+  const statsQuery = useQuery<DashboardStats>({
+    queryKey: ["/api/admin/stats"],
+    refetchInterval: 30000,
+  });
+
+  const stats: DashboardStats = statsQuery.data || {
+    totalProjects: 0,
+    activeProjects: 0,
+    totalRespondents: 0,
+    completes: 0,
+    terminates: 0,
+    quotafulls: 0,
+    securityTerminates: 0,
+    activityData: [],
+    clicksToday: 0,
+    completesToday: 0,
+    quotafullToday: 0,
+    terminatesToday: 0,
+    inProgressToday: 0,
+    duplicatesToday: 0,
+    securityToday: 0,
+    conversionRateToday: "0%",
+  };
+
+  const irPercent = stats.totalRespondents > 0
+    ? ((stats.completes / stats.totalRespondents) * 100).toFixed(1)
+    : "0.0";
+
 
   const filteredResponses = responses?.filter((r: any) => {
     const matchesSearch =
@@ -150,6 +189,59 @@ export default function ResponsesPage() {
           <p className="text-sm text-slate-400 font-semibold">Live logs of all activity across projects.</p>
         </div>
       </div>
+
+      {statsQuery.isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-7 mb-2">
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-2xl bg-white/40" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-7 mb-2">
+          <StatCard
+            title="Hits"
+            value={stats.totalRespondents}
+            icon={SunIcon}
+            className="shadow-sm border-slate-200/60 bg-white/80 backdrop-blur"
+          />
+          <StatCard
+            title="Starts"
+            value={stats.totalRespondents}
+            icon={CloudIcon}
+            className="shadow-sm border-slate-200/60 bg-white/80 backdrop-blur"
+          />
+          <StatCard
+            title="Completes"
+            value={stats.completes}
+            icon={RainbowIcon}
+            className="shadow-sm border-slate-200/60 bg-emerald-50/80 backdrop-blur"
+          />
+          <StatCard
+            title="Terminates"
+            value={stats.terminates}
+            icon={RainIcon}
+            className="shadow-sm border-slate-200/60 bg-white/80 backdrop-blur"
+          />
+          <StatCard
+            title="Quota Full"
+            value={stats.quotafulls}
+            icon={FogIcon}
+            className="shadow-sm border-slate-200/60 bg-white/80 backdrop-blur"
+          />
+          <StatCard
+            title="Security"
+            value={stats.securityTerminates}
+            icon={ThunderIcon}
+            className="shadow-sm border-rose-200/60 bg-rose-50/80 backdrop-blur"
+          />
+          <StatCard
+            title="IR %"
+            value={`${irPercent}%`}
+            icon={SunriseIcon}
+            className="shadow-sm border-blue-200/60 bg-blue-50/80 backdrop-blur"
+          />
+        </div>
+      )}
 
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white/40 p-1 rounded-[2rem] border border-slate-200/40 backdrop-blur-xl transition-all">
         <div className="flex flex-1 flex-col md:flex-row gap-3 w-full">

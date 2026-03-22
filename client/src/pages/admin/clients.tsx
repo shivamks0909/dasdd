@@ -91,7 +91,7 @@ export default function ClientsPage() {
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <button className="bg-primary text-white hover:bg-primary/90 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]">
+            <button className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]">
               <Plus className="h-4 w-4" />
               Add Partner
             </button>
@@ -162,7 +162,7 @@ export default function ClientsPage() {
                     )}
                   />
                   <DialogFooter className="pt-6">
-                    <button type="submit" disabled={createMutation.isPending} className="w-full bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all disabled:opacity-50">
+                    <button type="submit" disabled={createMutation.isPending} className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all disabled:opacity-50">
                       {createMutation.isPending ? "Validating Path..." : "Onboard to Nexus"}
                     </button>
                   </DialogFooter>

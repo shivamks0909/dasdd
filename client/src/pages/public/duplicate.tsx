@@ -1,6 +1,6 @@
 import React from "react";
-import { QuirkyOutcomeView } from "@/components/public/QuirkyOutcomeView";
+import { WavyOutcomeView } from "@/components/public/WavyOutcomeView";
 
 export default function DuplicatePage() {
-  return <QuirkyOutcomeView status="Duplicate" statusKeyword="duplicate" />;
+  return <WavyOutcomeView status="Duplicate" statusKeyword="duplicate" />;
 }

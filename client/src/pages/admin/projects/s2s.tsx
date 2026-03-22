@@ -154,7 +154,7 @@ export default function S2SConfigPage() {
             </div>
 
             <GlassButton 
-              className="w-full h-14 rounded-2xl bg-primary text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20"
+              className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20"
               onClick={() => saveMutation.mutate({ s2sSecret, requireS2S })}
               disabled={saveMutation.isPending}
             >

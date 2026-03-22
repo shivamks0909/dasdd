@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LucideIcon } from "lucide-react";
 
 interface StatCardProps {
@@ -8,13 +9,14 @@ interface StatCardProps {
   icon: React.ElementType;
   description?: string;
   className?: string;
+  isLoading?: boolean;
   trend?: {
     value: number;
     isPositive: boolean;
   };
 }
 
-export function StatCard({ title, value, icon: Icon, description, className }: StatCardProps) {
+export function StatCard({ title, value, icon: Icon, description, className, isLoading }: StatCardProps) {
   return (
     <Card className={cn(
       "bg-white/40 border-slate-200/50 backdrop-blur-xl rounded-[2rem] transition-all duration-500 hover:bg-white/60 hover:border-white hover:shadow-2xl hover:shadow-slate-200/40 group overflow-hidden relative",
@@ -34,7 +36,7 @@ export function StatCard({ title, value, icon: Icon, description, className }: S
       <CardContent className="pb-8 pt-2 px-6">
         <div className="flex flex-col">
           <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:scale-[1.02] transition-transform duration-500 origin-left select-all">
-            {value}
+            {isLoading ? <Skeleton className="h-9 w-24 bg-slate-100/80 mt-1" /> : value}
           </div>
           {description && (
             <p className="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-wide opacity-80 group-hover:opacity-100 transition-opacity">

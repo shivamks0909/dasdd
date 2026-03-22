@@ -1,6 +1,6 @@
 import React from "react";
-import { QuirkyOutcomeView } from "@/components/public/QuirkyOutcomeView";
+import { WavyOutcomeView } from "@/components/public/WavyOutcomeView";
 
 export default function QuotaFullPage() {
-  return <QuirkyOutcomeView status="Quotafull" statusKeyword="quotafull" />;
+  return <WavyOutcomeView status="Quotafull" statusKeyword="quotafull" />;
 }

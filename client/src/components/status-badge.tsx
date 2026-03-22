@@ -78,7 +78,16 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const config = statusConfig[status as StatusType] || {
+  // Normalize status for config lookup
+  const normalizedStatus = status?.toLowerCase();
+  let lookupStatus: StatusType = normalizedStatus as StatusType;
+
+  if (normalizedStatus === "completed") lookupStatus = "complete";
+  if (normalizedStatus === "terminated" || normalizedStatus === "disqualified") lookupStatus = "terminate";
+  if (normalizedStatus === "quota_full" || normalizedStatus === "quota") lookupStatus = "quotafull";
+  if (normalizedStatus === "security" || normalizedStatus === "fraud") lookupStatus = "security-terminate";
+
+  const config = statusConfig[lookupStatus] || {
     label: status,
     className: "bg-slate-100 text-slate-400 border-slate-100",
     shadow: "shadow-none",

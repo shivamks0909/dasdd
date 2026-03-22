@@ -53,19 +53,6 @@ export default function DashboardPage() {
     refetchInterval: 10000,
   });
 
-  if (statsQuery.isLoading) {
-    return (
-      <div className="space-y-8 animate-pulse">
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-40 w-full rounded-[2rem] bg-white/20" />
-          ))}
-        </div>
-        <Skeleton className="h-[400px] w-full rounded-[2.5rem] bg-white/20" />
-      </div>
-    );
-  }
-
   const stats: DashboardStats = statsQuery.data || {
     totalProjects: 0,
     activeProjects: 0,
@@ -99,6 +86,7 @@ export default function DashboardPage() {
           icon={SunIcon}
           description="Total Router Clicks"
           className="shadow-sm border-slate-200/60 bg-white/60"
+          isLoading={statsQuery.isLoading}
         />
         <StatCard
           title="Total Starts"
@@ -106,6 +94,7 @@ export default function DashboardPage() {
           icon={CloudIcon}
           description="In-Progress Sessions"
           className="shadow-sm border-slate-200/60 bg-white/60"
+          isLoading={statsQuery.isLoading}
         />
         <StatCard
           title="Completes"
@@ -113,6 +102,7 @@ export default function DashboardPage() {
           icon={RainbowIcon}
           description="Successful Submissions"
           className="shadow-sm border-slate-200/60 bg-white/60"
+          isLoading={statsQuery.isLoading}
         />
         <StatCard
           title="Terminates"
@@ -120,6 +110,7 @@ export default function DashboardPage() {
           icon={RainIcon}
           description="Screened Out"
           className="shadow-sm border-slate-200/60 bg-white/60"
+          isLoading={statsQuery.isLoading}
         />
         <StatCard
           title="Quota Full"
@@ -127,6 +118,7 @@ export default function DashboardPage() {
           icon={FogIcon}
           description="Over Quota Capacity"
           className="shadow-sm border-slate-200/60 bg-white/60"
+          isLoading={statsQuery.isLoading}
         />
         <StatCard
           title="Security / Fraud"
@@ -134,6 +126,7 @@ export default function DashboardPage() {
           icon={ThunderIcon}
           description="Blocked Sessions"
           className="shadow-sm border-slate-200/60 bg-white/60"
+          isLoading={statsQuery.isLoading}
         />
         <StatCard
           title="Conversion (IR %)"
@@ -141,8 +134,8 @@ export default function DashboardPage() {
           icon={SunriseIcon}
           description="Completes / Starts"
           className="shadow-sm border-slate-200/60 bg-white/60"
+          isLoading={statsQuery.isLoading}
         />
-
       </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
@@ -161,48 +154,52 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-8">
             <div className="h-[280px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stats.activityData}>
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis
-                    dataKey="name"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 700 }}
-                    dy={10}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 700 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      borderRadius: '16px',
-                      border: '1px solid #E2E8F0',
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                      backdropFilter: 'blur(8px)'
-                    }}
-                    itemStyle={{ fontWeight: 800, fontSize: '12px' }}
-                    labelStyle={{ fontWeight: 800, fontSize: '10px', color: '#64748B', marginBottom: '4px' }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#10B981"
-                    strokeWidth={4}
-                    fillOpacity={1}
-                    fill="url(#colorValue)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {statsQuery.isLoading ? (
+                <Skeleton className="h-full w-full rounded-2xl bg-slate-100/50" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stats.activityData}>
+                    <defs>
+                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 700 }}
+                      dy={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 700 }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        borderRadius: '16px',
+                        border: '1px solid #E2E8F0',
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                        backdropFilter: 'blur(8px)'
+                      }}
+                      itemStyle={{ fontWeight: 800, fontSize: '12px' }}
+                      labelStyle={{ fontWeight: 800, fontSize: '10px', color: '#64748B', marginBottom: '4px' }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#10B981"
+                      strokeWidth={4}
+                      fillOpacity={1}
+                      fill="url(#colorValue)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -134,21 +134,21 @@ export default function ProjectsPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setLocation(`/admin/link-generator?project=${project.projectCode}`)}
-                        className="p-3 text-slate-300 hover:text-primary hover:bg-blue-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100"
+                        className="p-3 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-2xl transition-all"
                         title="Generate Supplier Links"
                       >
                         <LinkIcon className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => setLocation(`/admin/projects/${project.projectCode}/s2s`)}
-                        className="p-3 text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100"
+                        className="p-3 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-2xl transition-all"
                         title="S2S Protocol Security"
                       >
                         <Shield className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => setLocation(`/admin/projects/${project.id}/edit`)}
-                        className="p-3 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100"
+                        className="p-3 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-2xl transition-all"
                         title="Edit Project"
                       >
                         <Pencil className="h-4 w-4" />
@@ -157,7 +157,7 @@ export default function ProjectsPage() {
                         <AlertDialogTrigger asChild>
                           <button
                             disabled={deleteMutation.isPending}
-                            className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all opacity-0 group-hover:opacity-100 disabled:opacity-30"
+                            className="p-3 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all disabled:opacity-30"
                             title="Archive Project"
                           >
                             {deleteMutation.isPending && deleteMutation.variables === project.id ? (

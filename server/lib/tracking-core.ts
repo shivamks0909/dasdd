@@ -24,8 +24,10 @@ export interface TrackingResult {
 }
 
 export async function processTrackingRequest(params: TrackingParams): Promise<TrackingResult> {
-  const { projectCode, countryCode, extraParams = {} } = params;
-  const supplierCode = params.supplierCode || "DIRECT";
+  const projectCode = params.projectCode?.toUpperCase();
+  const countryCode = params.countryCode?.toUpperCase();
+  const { extraParams = {} } = params;
+  const supplierCode = (params.supplierCode || "DIRECT").toUpperCase();
   const supplierRid = params.supplierRid || `DIR-${randomUUID().split('-')[0]}`;
 
   console.log(`[TrackingCore] Processing: project=${projectCode}, country=${countryCode}, sup=${supplierCode}, rid=${supplierRid}`);
@@ -88,25 +90,19 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
     }
 
     // 5. Generate Client RID (Atomic)
-    let clientRid: string;
+    let clientRid: string = "";
     console.log(`[TrackingCore] Generating client RID...`);
     try {
       clientRid = await storage.generateClientRID(projectCode);
     } catch (ridErr: any) {
       console.error("RID generation error:", ridErr);
-      const prefix = project.ridPrefix || "OPI";
-      const cc = project.ridCountryCode || "XX";
-      clientRid = `${prefix}${cc}${Date.now().toString().slice(-6)}`;
     }
 
     if (!clientRid || clientRid.trim() === '') {
-      return { 
-        error: { 
-          status: 302, 
-          message: "RID generation failed", 
-          internalRedirect: `${routerService.internalPathMap['terminate']}?reason=rid_failed` 
-        } 
-      };
+      console.warn(`[TrackingCore] RID generation failed or returned blank, using fallback.`);
+      const prefix = project.ridPrefix || "OPI";
+      const cc = project.ridCountryCode || "XX";
+      clientRid = `${prefix}${cc}${Date.now().toString().slice(-6)}`;
     }
 
     // 6. Create Respondent Session
@@ -123,38 +119,49 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
     }
 
     // 7. Build survey URL
-    let redirectUrl = countrySurvey.surveyUrl
-      .replaceAll("{RID}", clientRid)
-      .replaceAll("[RID]", clientRid)
-      .replaceAll("{rid}", clientRid)
-      .replaceAll("{uid}", clientRid)
-      .replaceAll("[UID]", clientRid)
-      .replaceAll("{oi_session}", oiSession);
-
+    let redirectUrl = countrySurvey.surveyUrl;
+    const handledKeys = ['code', 'country', 'sup', 'uid', 'rid', 'toid', 'zid', 'pid', 'mid', 'sid'];
     const usedParams = new Set<string>();
+
+    // Standard replacements
+    const standardReplacements = [
+      { tags: ["{RID}", "[RID]", "{rid}", "[rid]", "{UID}", "[UID]", "{uid}", "[uid]", "%7BRID%7D", "%5BRID%5D", "%7Brid%7D", "%5Brid%5D", "%7BUID%7D", "%5BUID%5D", "%7Buid%7D", "%5Buid%5D"], value: clientRid },
+      { tags: ["{oi_session}", "{session}", "[session]"], value: oiSession }
+    ];
+
+    standardReplacements.forEach(group => {
+      group.tags.forEach(tag => {
+        if (redirectUrl.includes(tag)) {
+          redirectUrl = redirectUrl.replaceAll(tag, group.value);
+          // If we replaced a tag that matches a common key name, mark it as handled
+          const baseKey = tag.replace(/[{}\[\]]/g, '').toLowerCase();
+          if (handledKeys.includes(baseKey)) usedParams.add(baseKey);
+        }
+      });
+    });
+
+    // Handle extraParams placeholders
     Object.entries(extraParams).forEach(([key, value]) => {
       if (typeof value === 'string') {
         const keyLower = key.toLowerCase();
-        const hasPlaceholder = 
-          redirectUrl.includes(`{${key}}`) || 
-          redirectUrl.includes(`[${key}]`) ||
-          redirectUrl.includes(`{${keyLower}}`) ||
-          redirectUrl.includes(`[${keyLower}]`);
-        
-        if (hasPlaceholder) {
-          redirectUrl = redirectUrl
-            .replaceAll(`{${key}}`, value)
-            .replaceAll(`[${key}]`, value)
-            .replaceAll(`{${keyLower}}`, value)
-            .replaceAll(`[${keyLower}]`, value);
-          usedParams.add(key);
-        }
+        const tags = [`{${key}}`, `[${key}]`, `{${keyLower}}`, `[${keyLower}]` ];
+        let found = false;
+        tags.forEach(tag => {
+          if (redirectUrl.includes(tag)) {
+            redirectUrl = redirectUrl.replaceAll(tag, value);
+            found = true;
+          }
+        });
+        if (found) usedParams.add(keyLower);
       }
     });
 
+    // 8. Final URL Assembly
     const finalUrlObj = new URL(redirectUrl);
     Object.entries(extraParams).forEach(([key, value]) => {
-      if (!usedParams.has(key) && typeof value === 'string') {
+      const keyLower = key.toLowerCase();
+      // Only append if it wasn't used as a placeholder AND it's not a core tracking param we already handled
+      if (!usedParams.has(keyLower) && !handledKeys.includes(keyLower) && typeof value === 'string') {
         finalUrlObj.searchParams.set(key, value);
       }
     });
@@ -169,6 +176,15 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
       const separator = redirectUrl.includes('?') ? '&' : '?';
       redirectUrl += `${separator}oi_session=${oiSession}`;
     }
+
+    // 9. Cleanup unresolved placeholders (e.g., {sid}, [zip]) to avoid broken client links
+    redirectUrl = redirectUrl.replace(/\{[a-zA-Z0-9_-]+\}/g, "");
+    redirectUrl = redirectUrl.replace(/\[[a-zA-Z0-9_-]+\]/g, "");
+    
+    // Final URL sanitization for empty param values caused by cleanup (e.g., &sid=)
+    redirectUrl = redirectUrl.replace(/[\?&][a-zA-Z0-9_-]+=($|&)/g, (match) => {
+      return match.endsWith('&') ? match.charAt(0) : "";
+    });
 
     // 8. Save respondent
     console.log(`[TrackingCore] Saving respondent ${oiSession}...`);

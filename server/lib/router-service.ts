@@ -112,11 +112,15 @@ export class RouterService {
     // 3. Fallback to Internal Landing Page if no external URL determined
     if (!finalRedirectUrl || finalRedirectUrl.trim() === '') {
       const internalPath = this.internalPathMap[finalStatus] || '/pages/terminate';
+      const loiSeconds = respondent.startedAt
+        ? Math.round((Date.now() - new Date(respondent.startedAt).getTime()) / 1000)
+        : 0;
       const params = new URLSearchParams({
         pid: respondent.projectCode || "",
         uid: respondent.supplierRid || "",
         session: respondent.oiSession,
-        status: finalStatus
+        status: finalStatus,
+        loi: String(loiSeconds),
       });
       return `${internalPath}?${params.toString()}`;
     }

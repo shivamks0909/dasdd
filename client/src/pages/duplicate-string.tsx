@@ -1,12 +1,6 @@
-import { LandingResultLayout } from "@/components/landing-result-layout";
+import React from "react";
+import { WavyOutcomeView } from "@/components/public/WavyOutcomeView";
 
 export default function DuplicateStringPage() {
-  return (
-    <LandingResultLayout
-      title="Duplicate Entry Detected"
-      badgeText="Duplicate"
-      description="A duplicate response has been detected. Each participant may only respond once."
-      theme="secondary"
-    />
-  );
+  return <WavyOutcomeView status="Duplicate" statusKeyword="duplicate" />;
 }
