@@ -3,7 +3,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 
-function FloatingPaths({ position }: { position: number }) {
+function FloatingPaths({ position, title }: { position: number, title?: string }) {
     const paths = Array.from({ length: 36 }, (_, i) => ({
         id: i,
         d: `M-${380 - i * 5 * position} -${189 + i * 6}C-${
@@ -28,7 +28,7 @@ function FloatingPaths({ position }: { position: number }) {
                 viewBox="0 0 696 316"
                 fill="none"
             >
-                <title>Background Paths</title>
+                <title>{title || "Background Paths"}</title>
                 {paths.map((path) => (
                     <motion.path
                         key={path.id}
@@ -55,11 +55,11 @@ function FloatingPaths({ position }: { position: number }) {
 }
 
 /** Pure background layer — place inside a `relative` container */
-export function BackgroundPaths() {
+export function BackgroundPaths({ title }: { title?: string }) {
     return (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <FloatingPaths position={1} />
-            <FloatingPaths position={-1} />
+            <FloatingPaths position={1} title={title} />
+            <FloatingPaths position={-1} title={title} />
         </div>
     );
 }
