@@ -38,14 +38,18 @@ async function runTest() {
         validateStatus: (s) => s >= 300 && s < 400 
       });
 
-      const redirectUrl = callbackRes.headers.location;
-      console.log(`[Step 2] Redirected to: ${redirectUrl}`);
+      const redirectUrlStr = callbackRes.headers.location;
+      console.log(`[Step 2] Full Redirect URL: ${redirectUrlStr}`);
+
+      const redirectUrlObj = new URL(redirectUrlStr.includes('://') ? redirectUrlStr : `${BASE_URL}${redirectUrlStr}`);
+      const finalUid = redirectUrlObj.searchParams.get('uid');
+      console.log(`[Step 2] Final UID on landing page: ${finalUid}`);
 
       const expectedStatus = statusType === 'complete' ? 'complete' : statusType === 'terminate' ? 'terminate' : 'quota';
-      if (redirectUrl.includes(`status=${expectedStatus}`)) {
-        console.log(`[Test SUCCESS] Correctly redirected to ${statusType} landing page.`);
+      if (redirectUrlStr.includes(`status=${expectedStatus}`) && finalUid === testUid) {
+        console.log(`[Test SUCCESS] Correctly redirected to ${statusType} landing page with preserved UID: ${finalUid}`);
       } else {
-        console.log(`[Test FAILED] Final redirect URL does not match status: ${statusType}. Got: ${redirectUrl}`);
+        console.log(`[Test FAILED] Final redirect URL mismatch. Expected UID: ${testUid}, Got: ${finalUid}. Expected Status: ${expectedStatus}. URL: ${redirectUrlStr}`);
         process.exit(1);
       }
     }
