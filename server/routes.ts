@@ -17,6 +17,8 @@ import { db } from "./db";
 import { s2sLogs, projectS2sConfig, respondents, activityLogs, type Supplier, type Project, type Respondent } from "@shared/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { generateS2SToken, verifyS2SToken } from "./s2s";
+import { processCallback } from "./lib/callback-core";
+import { injectUidAndSession } from "./lib/url-intelligence";
 import { generateExcelReport } from "./lib/export-excel-server";
 import { routerService } from "./lib/router-service";
 
@@ -828,83 +830,24 @@ export async function registerRoutes(
 
   // ====== CALLBACK ENDPOINTS ======
   const handleCallback = async (req: Request, res: Response, status: string) => {
-    const { oi_session, clickid, pid, uid, cid, guid, rid, session_token } = req.query;
+    const { oi_session, clickid, pid, uid } = req.query;
+    
+    // Construct base URL for redirect calculation
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers.host;
+    const baseUrl = `${protocol}://${host}${req.originalUrl}`;
 
-    let respondent: Respondent | undefined;
-
-    // 1. Try finding by oi_session (Cleanest)
-    if (oi_session) {
-      respondent = await storage.getRespondentBySession(oi_session as string);
-      console.log(`[Callback] Lookup by oi_session (${oi_session}): ${respondent ? 'Found' : 'Not Found'}`);
-    }
-
-    // 2. Try finding by clickid (Robustness)
-    if (!respondent && clickid) {
-      respondent = await storage.getRespondentByClickid(clickid as string);
-      console.log(`[Callback] Lookup by clickid (${clickid}): ${respondent ? 'Found' : 'Not Found'}`);
-    }
-
-    // 3. Try finding by Project Code + Sent UID (Recovery for ExploreResearch)
-    if (!respondent && pid && uid) {
-      respondent = await storage.getRespondentBySentUid(pid as string, uid as string);
-      console.log(`[Callback] Lookup by sent_pid+sent_uid (${pid}+${uid}): ${respondent ? 'Found' : 'Not Found'}`);
-    }
-
-    if (!respondent) {
-      console.warn(`[Callback] Could not find session. Status: ${status}, Params:`, JSON.stringify(req.query));
-      // If we can't find it, show a meaningful landing page instead of raw error
-      let statusToUse = status;
-      if (statusToUse === 'quota') statusToUse = 'quotafull';
-      const landingPath = (routerService.internalPathMap as any)[statusToUse] || '/pages/terminate';
-      return res.redirect(`${landingPath}?status=${statusToUse}&error=session_not_found`);
-    }
-
-    if (respondent.status !== 'started' && respondent.status !== 'pending') {
-      console.log(`[Callback] Session ${respondent.oiSession} already has status ${respondent.status}. Redirecting to final destination.`);
-      const supplier = respondent.supplierCode ? await storage.getSupplierByCode(respondent.supplierCode) : undefined;
-      const project = await storage.getProjectByCode(respondent.projectCode);
-      const finalRedirectUrl = routerService.getStatusRedirectUrl(respondent.status, respondent, supplier, project);
-      return res.redirect(finalRedirectUrl);
-    }
-
-    let finalStatus = status;
-
-    // S2S Verification Check (using InsForge HTTP SDK to avoid TCP timeout)
-    if (status === 'complete') {
-      const s2sConfig = await storage.getS2sConfig(respondent.projectCode);
-      if (s2sConfig && s2sConfig.requireS2S && !respondent.s2sVerified) {
-        // Fraud detected! Mark as security-terminate and log alert
-        finalStatus = 'security-terminate';
-        await storage.createActivityLog({
-          oiSession: respondent.oiSession,
-          eventType: 'security_alert',
-          meta: { details: `Fraud attempt blocked: Manual client complete without S2S verification.` }
-        });
-        // Update respondent fraud flag via InsForge HTTP
-        await insforge.database.from('respondents').update({ fraud_score: '1.0', status: 'fraud' }).eq('oi_session', respondent.oiSession);
-      }
-    }
-
-    // Update Status
-    if (finalStatus !== 'security-terminate' || status === 'security-terminate') {
-      await storage.updateRespondentStatus(respondent.oiSession, finalStatus);
-    }
-
-    // Get Supplier & Project for Redirect calculation
-    const supplier = respondent.supplierCode ? await storage.getSupplierByCode(respondent.supplierCode) : undefined;
-    const project = await storage.getProjectByCode(respondent.projectCode);
-
-    // Log Activity
-    await storage.createActivityLog({
-      oiSession: respondent.oiSession,
-      eventType: 'callback',
-      meta: { details: `Received ${status} callback from client.` }
+    const result = await processCallback({
+      oi_session: oi_session as string,
+      clickid: clickid as string,
+      pid: pid as string,
+      uid: uid as string,
+      status: status,
+      baseUrl: baseUrl
     });
 
-    // Calculate Destination URL using Unified Router Service
-    const finalRedirectUrl = routerService.getStatusRedirectUrl(finalStatus, respondent, supplier, project);
-
-    return res.redirect(finalRedirectUrl);
+    console.log(`[ExpressCallback] Status: ${status}, Redirecting to: ${result.redirectUrl}`);
+    return res.redirect(result.redirectUrl);
   };
 
   app.get("/complete", (req, res) => handleCallback(req, res, "complete"));

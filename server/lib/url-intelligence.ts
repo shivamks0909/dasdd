@@ -83,7 +83,7 @@ export function injectUidAndSession(
   }
 
   // 3. Handle blank uid= param (Case: ?uid=)
-  if (!replacedAny && urlObj.searchParams.has(clientUidParam) && !urlObj.searchParams.get(clientUidParam)) {
+  if (urlObj.searchParams.has(clientUidParam) && !urlObj.searchParams.get(clientUidParam)) {
     console.log(`[UrlIntelligence] Detected blank ${clientUidParam}= param. Filling with ${clientRid}`);
     urlObj.searchParams.set(clientUidParam, clientRid);
     replacedAny = true;
