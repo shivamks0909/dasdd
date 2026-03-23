@@ -45,11 +45,18 @@ async function runTest() {
       const finalUid = redirectUrlObj.searchParams.get('uid');
       console.log(`[Step 2] Final UID on landing page: ${finalUid}`);
 
-      const expectedStatus = statusType === 'complete' ? 'complete' : statusType === 'terminate' ? 'terminate' : 'quota';
-      if (redirectUrlStr.includes(`status=${expectedStatus}`) && finalUid === testUid) {
+      const expectedStatus = statusType; // Matches internal path map and status updates
+      
+      const hasStatusInUrl = redirectUrlStr.includes(`status=${expectedStatus}`);
+      const uidsMatch = String(finalUid) === String(testUid);
+
+      if (hasStatusInUrl && uidsMatch) {
         console.log(`[Test SUCCESS] Correctly redirected to ${statusType} landing page with preserved UID: ${finalUid}`);
       } else {
-        console.log(`[Test FAILED] Final redirect URL mismatch. Expected UID: ${testUid}, Got: ${finalUid}. Expected Status: ${expectedStatus}. URL: ${redirectUrlStr}`);
+        console.log(`[Test FAILED] Verification failed.`);
+        console.log(` - Expected Status: ${expectedStatus}, Found in URL: ${hasStatusInUrl}`);
+        console.log(` - Expected UID: ${testUid}, Got: ${finalUid}, Match: ${uidsMatch}`);
+        console.log(` - Full Redirect URL: ${redirectUrlStr}`);
         process.exit(1);
       }
     }

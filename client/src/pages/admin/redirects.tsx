@@ -98,7 +98,7 @@ export default function ToolLinksPage() {
     {
       title: "Success Redirect (Complete)",
       description: "Redirect for successful survey completion",
-      url: `${baseUrl}/api/track/complete?oi_session=[oi_session]&uid=[uid]`,
+      url: `${baseUrl}/complete?pid=[pid]&uid=[uid]`,
       icon: CheckCircle2,
       color: "text-green-600",
       bgColor: "bg-green-50"
@@ -106,7 +106,7 @@ export default function ToolLinksPage() {
     {
       title: "Terminate Redirect (Screen-out)",
       description: "Redirect for ineligible respondents",
-      url: `${baseUrl}/api/track/terminate?oi_session=[oi_session]&uid=[uid]`,
+      url: `${baseUrl}/terminate?pid=[pid]&uid=[uid]`,
       icon: XCircle,
       color: "text-red-600",
       bgColor: "bg-red-50"
@@ -114,7 +114,7 @@ export default function ToolLinksPage() {
     {
       title: "Quota Full Redirect",
       description: "Redirect when target numbers are met",
-      url: `${baseUrl}/api/track/quotafull?oi_session=[oi_session]&uid=[uid]`,
+      url: `${baseUrl}/quotafull?pid=[pid]&uid=[uid]`,
       icon: ShieldAlert,
       color: "text-amber-600",
       bgColor: "bg-amber-50"
@@ -152,7 +152,7 @@ export default function ToolLinksPage() {
       <Alert variant="default" className="bg-blue-50 border-blue-200">
         <Info className="h-4 w-4 text-blue-600" />
         <AlertDescription className="text-blue-700">
-          <strong>CRITICAL:</strong> Your survey platform must replace <strong>[oi_session]</strong> and <strong>[uid]</strong> placeholders 
+          <strong>CRITICAL:</strong> Your survey platform must replace <strong>[pid]</strong> and <strong>[uid]</strong> placeholders 
           automatically. These ensure we can correctly track respondent statuses and show your landing page.
         </AlertDescription>
       </Alert>

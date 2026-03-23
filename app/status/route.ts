@@ -13,13 +13,13 @@ export async function GET(req: NextRequest) {
 
   console.log(`[StatusRoute] Request: code=${code}, uid=${uid}, type=${type}`);
 
-  if (!code || !type) {
-    return new NextResponse("Missing required parameters (code and type are required)", { status: 400 });
+  if (!code || !uid || !type) {
+    return new NextResponse("Missing required parameters", { status: 400 });
   }
 
   // Determine base URL: fallback to current request origin
   const baseUrl = req.nextUrl.origin;
-  
+
   // Mapping of status types to system paths
   const pathMap: Record<string, string> = {
     'complete': 'complete',
@@ -43,76 +43,65 @@ export async function GET(req: NextRequest) {
   try {
     // 1. Try to fetch project and update respondent (DATABASE DEPENDENT)
     if (!isPlaceholder) {
-        console.log("[StatusRoute] Attempting database operations...");
-        // We use a separate try-catch for DB to allow fallback if it fails
-        try {
+      console.log("[StatusRoute] Attempting database operations...");
+      // We use a separate try-catch for DB to allow fallback if it fails
+      try {
         const rawResult = await pool.query("SELECT * FROM projects WHERE project_code = $1 LIMIT 1", [code]);
         const project = rawResult.rows[0] as unknown as Project;
 
         if (project) {
-            // Update respondent if found
-            let respondent = null;
-            if (uid) {
-                const respondentArray = await pool.query(
-                    "SELECT * FROM respondents WHERE project_code = $1 AND supplier_rid = $2 LIMIT 1",
-                    [code, uid]
-                );
-                respondent = respondentArray.rows[0];
-            } else {
-                console.log(`[StatusRoute] UID is blank. Recovering most recent session for ${code}`);
-                const respondentArray = await pool.query(
-                    "SELECT * FROM respondents WHERE project_code = $1 ORDER BY started_at DESC LIMIT 1",
-                    [code]
-                );
-                respondent = respondentArray.rows[0];
-            }
+          // Update respondent if found
+          const respondentArray = await pool.query(
+            "SELECT * FROM respondents WHERE project_code = $1 AND supplier_rid = $2 LIMIT 1",
+            [code, uid]
+          );
+          const respondent = respondentArray.rows[0];
 
-            if (respondent) {
-              const validStatuses = ['complete', 'terminate', 'quotafull', 'security-terminate'];
-              let dbStatus = type.toLowerCase();
-              if (dbStatus === 'quota') dbStatus = 'quotafull';
-              if (['security_terminate', 'duplicate_ip', 'duplicate_string', 'security'].includes(dbStatus)) {
-                dbStatus = 'security-terminate';
-              }
-              const isValidStatus = validStatuses.includes(dbStatus);
-
-              console.log(`[StatusRoute] Updating respondent ${respondent.id} to status ${dbStatus}`);
-              await pool.query(
-                "UPDATE respondents SET status = $1, completed_at = $2 WHERE id = $3",
-                [isValidStatus ? dbStatus : dbStatus, dbStatus === 'complete' ? new Date() : null, respondent.id]
-              );
+          if (respondent) {
+            const validStatuses = ['complete', 'terminate', 'quotafull', 'security-terminate'];
+            let dbStatus = type.toLowerCase();
+            if (dbStatus === 'quota') dbStatus = 'quotafull';
+            if (dbStatus === 'security_terminate' || dbStatus === 'duplicate_ip' || dbStatus === 'duplicate_string') {
+              dbStatus = 'security-terminate';
             }
+            const isValidStatus = validStatuses.includes(dbStatus);
 
-            // Check for custom redirect URL if columns exist
-            // (Note: Using dynamic access to avoid crash if columns are missing)
-            const propertyMap: Record<string, string> = {
-              'complete': 'complete_url',
-              'terminate': 'terminate_url',
-              'quota': 'quotafull_url',
-              'quotafull': 'quotafull_url',
-              'security_terminate': 'security_url',
-              'security-terminate': 'security_url',
-            };
-            
-            const customUrlColumn = propertyMap[type.toLowerCase()];
-            if (customUrlColumn && project[customUrlColumn as keyof typeof project]) {
-              let redirectUrl = project[customUrlColumn as keyof typeof project] as string;
-              redirectUrl = redirectUrl.replace('[UID]', uid);
-              console.log("[StatusRoute] Using custom redirect:", redirectUrl);
-              return NextResponse.redirect(redirectUrl);
-            }
+            await pool.query(
+              "UPDATE respondents SET status = $1, completed_at = $2 WHERE id = $3",
+              [isValidStatus ? dbStatus : type, dbStatus === 'complete' ? new Date() : null, respondent.id]
+            );
+          }
+
+          // Check for custom redirect URL if columns exist
+          // (Note: Using dynamic access to avoid crash if columns are missing)
+          const propertyMap: Record<string, string> = {
+            'complete': 'complete_url',
+            'terminate': 'terminate_url',
+            'quota': 'quotafull_url',
+            'quotafull': 'quotafull_url',
+            'security_terminate': 'security_url',
+            'security-terminate': 'security_url',
+          };
+
+          const customUrlColumn = propertyMap[type.toLowerCase()];
+          if (customUrlColumn && project[customUrlColumn as keyof typeof project]) {
+            let redirectUrl = project[customUrlColumn as keyof typeof project] as string;
+            redirectUrl = redirectUrl.replace('[UID]', uid);
+            console.log("[StatusRoute] Using custom redirect:", redirectUrl);
+            return NextResponse.redirect(redirectUrl);
+          }
         }
-    } catch (dbError: any) {
+      } catch (dbError: any) {
         console.error("[StatusRoute] Database operation failed, falling back to system page:", dbError.message);
         // Do NOT throw, just fall through to the system redirect below
+      }
     }
-}
 
-    // 2. Fallback to generic system landing page (ROBUST)
-    const finalUrl = new URL(`${baseUrl}/pages/${statusPath}`);
+    // 2. Fallback to clean system routes (/complete, /terminate, /quotafull)
+    const finalUrl = new URL(`${baseUrl}/${statusPath}`);
     finalUrl.searchParams.set('pid', code);
     finalUrl.searchParams.set('uid', uid);
-    
+
     console.log("[StatusRoute] Redirecting to system page:", finalUrl.toString());
     return NextResponse.redirect(finalUrl.toString());
 
