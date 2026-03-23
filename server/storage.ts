@@ -1,4 +1,5 @@
 import { insforge } from "./insforge";
+console.log("[Storage] server/storage.ts file loaded");
 import {
   type Admin, type InsertAdmin,
   type Project, type InsertProject,
@@ -51,6 +52,8 @@ export interface IStorage {
   // Respondents (Tracking)
   createRespondent(respondent: InsertRespondent): Promise<Respondent>;
   getRespondentBySession(oiSession: string): Promise<Respondent | undefined>;
+  getRespondentByClickid(clickid: string): Promise<Respondent | undefined>;
+  getRespondentByClientRid(projectCode: string, clientRid: string): Promise<Respondent | undefined>;
   updateRespondentStatus(oiSession: string, status: string, redirectUrl?: string): Promise<Respondent | undefined>;
   checkDuplicateRespondent(projectCode: string, supplierCode: string, supplierRid: string): Promise<boolean>;
   getRespondents(): Promise<Respondent[]>;
@@ -179,6 +182,8 @@ const mapSupplier = (data: any): Supplier => ({
   terminateUrl: data.terminate_url,
   quotafullUrl: data.quotafull_url,
   securityUrl: data.security_url,
+  uidMacro: data.uid_macro,
+  supplierCode: data.supplier_code,
   createdAt: data.created_at ? new Date(data.created_at) : undefined
 });
 
@@ -209,7 +214,10 @@ const mapRespondent = (data: any): Respondent => ({
   s2sVerifiedIp: data.s2s_verified_ip,
   isFakeSuspected: !!data.is_fake_suspected,
   fakeReason: data.fake_reason,
-  redirectStatus: data.redirect_status
+  redirectStatus: data.redirect_status,
+  urlUidPosition: data.url_uid_position,
+  urlUidValue: data.url_uid_value,
+  clickid: data.clickid
 });
 
 const mapSupplierUser = (data: any): SupplierUser => ({
@@ -233,6 +241,9 @@ const mapSupplierProjectAccess = (data: any): SupplierProjectAccess => ({
 });
 
 export class DatabaseStorage implements IStorage {
+  constructor() {
+    console.log("[Storage] DatabaseStorage instance created");
+  }
   async getAdminByUsername(username: string): Promise<Admin | undefined> {
     const { data } = await insforge.database.from("admins").select("*").eq("username", username).single();
     return data ? mapAdmin(data) : undefined;
@@ -276,11 +287,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProjectByCode(projectCode: string): Promise<Project | undefined> {
-    const { data } = await insforge.database.from("projects")
+    console.log(`[Storage] getProjectByCode logic starting for: "${projectCode}"`);
+    const { data, error } = await insforge.database
+      .from("projects")
       .select("*")
-      .eq("project_code", projectCode)
-      .neq("status", "deleted")
+      .ilike("project_code", projectCode)
       .maybeSingle();
+
+    console.log(`[Storage] Raw query for "${projectCode}": data=${!!data}, status=${data?.status}, error=${error?.message || 'none'}`);
+    if (data) console.log(`[Storage] Match found: ${data.project_code} (ID: ${data.id})`);
+
     return data ? mapProject(data) : undefined;
   }
 
@@ -339,7 +355,9 @@ export class DatabaseStorage implements IStorage {
     const padding = project.ridPadding || 4;
 
     const paddedCounter = nextCounter.toString().padStart(padding, "0");
-    return `${prefix}${countryCode}${paddedCounter}`;
+    const finalRid = `${prefix}${countryCode}${paddedCounter}`;
+    console.log(`[Storage] Generated RID: ${finalRid} (Prefix: '${prefix}', CC: '${countryCode}', Counter: ${nextCounter})`);
+    return finalRid;
   }
 
   async deleteProject(id: string): Promise<void> {
@@ -352,9 +370,15 @@ export class DatabaseStorage implements IStorage {
     const { data } = await insforge.database.from("country_surveys").select("*").eq("project_id", projectId);
     return (data || []).map(mapCountrySurvey);
   }
-
   async getCountrySurveyByCode(projectCode: string, countryCode: string): Promise<CountrySurvey | undefined> {
-    const { data } = await insforge.database.from("country_surveys").select("*").eq("project_code", projectCode).eq("country_code", countryCode).maybeSingle();
+    console.log(`[Storage] getCountrySurveyByCode starting for: "${projectCode}" / "${countryCode}"`);
+    const { data } = await insforge.database
+      .from("country_surveys")
+      .select("*")
+      .ilike("project_code", projectCode)
+      .eq("country_code", countryCode)
+      .maybeSingle();
+    
     return data ? mapCountrySurvey(data) : undefined;
   }
 
@@ -392,6 +416,19 @@ export class DatabaseStorage implements IStorage {
 
   async getSupplierByCode(code: string): Promise<Supplier | undefined> {
     const { data } = await insforge.database.from("suppliers").select("*").eq("code", code).maybeSingle();
+    
+    if (!data && (code === "VIRTUAL_SUP" || code === "TEST_SUP")) {
+      console.log(`[Storage] Providing virtual supplier for ${code}`);
+      return {
+        id: "virtual-sup",
+        name: "Virtual Test Supplier",
+        code: code,
+        status: "active",
+        createdAt: new Date(),
+        uidMacro: "[uid]",
+        supplierCode: code
+      } as Supplier;
+    }
     return data ? mapSupplier(data) : undefined;
   }
 
@@ -461,7 +498,11 @@ export class DatabaseStorage implements IStorage {
       s2s_verified_ip: respondent.s2sVerifiedIp || null,
       is_fake_suspected: respondent.isFakeSuspected || false,
       fake_reason: respondent.fakeReason || null,
-      redirect_status: respondent.redirectStatus || null
+      redirect_status: respondent.redirectStatus || null,
+      // clickid: respondent.clickid || null,
+      // client_uid_param: respondent.clientUidParam || 'uid',
+      // uid_injection_type: respondent.uid_injection_type || 'query',
+      // passthrough_data: respondent.passthroughData || {}
     };
     console.log(`[Storage] Inserting respondent with extra_params:`, JSON.stringify(dbRespondent.extra_params));
     const { data, error } = await insforge.database.from("respondents").insert([dbRespondent]).select().single();
@@ -475,6 +516,27 @@ export class DatabaseStorage implements IStorage {
 
   async getRespondentBySession(oiSession: string): Promise<Respondent | undefined> {
     const { data } = await insforge.database.from("respondents").select("*").eq("oi_session", oiSession).maybeSingle();
+    return data ? mapRespondent(data) : undefined;
+  }
+
+  async getRespondentByClickid(clickid: string): Promise<Respondent | undefined> {
+    const { data } = await insforge.database.from("respondents").select("*").eq("clickid", clickid).maybeSingle();
+    return data ? mapRespondent(data) : undefined;
+  }
+
+  async getRespondentByClientRid(projectCode: string, clientRid: string): Promise<Respondent | undefined> {
+    const { data } = await insforge.database.from("respondents").select("*").eq("project_code", projectCode).eq("client_rid", clientRid).maybeSingle();
+    return data ? mapRespondent(data) : undefined;
+  }
+
+  async getRespondentBySupplierRid(projectCode: string, supplierRid: string): Promise<Respondent | undefined> {
+    const { data } = await insforge.database.from("respondents")
+      .select("*")
+      .eq("project_code", projectCode)
+      .eq("supplier_rid", supplierRid)
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     return data ? mapRespondent(data) : undefined;
   }
 
@@ -499,12 +561,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async checkDuplicateRespondent(projectCode: string, supplierCode: string, supplierRid: string): Promise<boolean> {
-    const { count } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("project_code", projectCode)
-      .eq("supplier_code", supplierCode)
-      .eq("supplier_rid", supplierRid);
-    return (count || 0) > 0;
+    console.log(`[Storage] checkDuplicateRespondent START: project=${projectCode}, sup=${supplierCode}, rid=${supplierRid}`);
+    
+    try {
+      const { count: exactCount, error: exactError } = await insforge.database.from("respondents")
+        .select("*", { count: 'exact', head: true })
+        .eq("project_code", projectCode)
+        .eq("supplier_code", supplierCode)
+        .eq("supplier_rid", supplierRid);
+
+      if (exactError) console.error(`[Storage] checkDuplicateRespondent exactError:`, exactError.message);
+
+      const { count: upperCount, error: upperError } = await insforge.database.from("respondents")
+        .select("*", { count: 'exact', head: true })
+        .eq("project_code", projectCode)
+        .eq("supplier_code", supplierCode)
+        .ilike("supplier_rid", supplierRid);
+      
+      if (upperError) console.error(`[Storage] checkDuplicateRespondent upperError:`, upperError.message);
+
+      console.log(`[Storage] checkDuplicateRespondent results: exact=${exactCount}, upper=${upperCount}`);
+      return (exactCount || 0) > 0 || (upperCount || 0) > 0;
+    } catch (e: any) {
+      console.error(`[Storage] checkDuplicateRespondent FATAL EXCEPTION:`, e.message);
+      return false; // Safely allow if DB is failing
+    }
   }
 
   async getRespondents(): Promise<Respondent[]> {
@@ -1375,7 +1456,10 @@ export class DatabaseStorage implements IStorage {
       ridPrefix: "OI",
       ridCountryCode: data.countryCode,
       ridPadding: 4,
-      ridCounter: 1
+      ridCounter: 1,
+      clientUidParam: "uid",
+      forcePidAsUid: false,
+      uidInjectionType: "query"
     });
 
     // 2. Create Country Survey

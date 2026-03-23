@@ -130,6 +130,7 @@ export class RouterService {
     const replacements: Record<string, string> = {
       'rid': sanitizedRid,
       'uid': sanitizedRid,
+      'client_rid': respondent.clientRid || '',
       'id': sanitizedRid, // common alias
       'pid': respondent.projectCode || '',
       'oi_session': respondent.oiSession,

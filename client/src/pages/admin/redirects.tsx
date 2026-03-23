@@ -9,7 +9,8 @@ import {
   Globe,
   Monitor,
   Lock,
-  Play
+  Play,
+  Info
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -17,6 +18,7 @@ import { GlassButton } from "@/components/ui/glass-button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Project } from "@shared/schema";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ToolLinksPage() {
   const { toast } = useToast();
@@ -72,7 +74,6 @@ export default function ToolLinksPage() {
     }
   });
 
-  // Determine base URL: prefer project custom domain, fallback to current origin
   let baseUrl = typeof window !== 'undefined' ? window.location.origin : "https://track.opinioninsights.in";
   if (project?.customDomain) {
     baseUrl = project.customDomain.trim();
@@ -90,58 +91,42 @@ export default function ToolLinksPage() {
   };
 
   const testLink = (url: string) => {
-    window.open(url.replace("[UID]", "TEST" + Math.floor(1000 + Math.random() * 9000)), "_blank");
+    window.open(url.replace("[uid]", "TEST_RID").replace("[oi_session]", "TEST_SESSION"), "_blank");
   };
 
   const redirectLinks = [
     {
-      title: "Complete Redirect",
-      description: "Redirect for successful survey completions",
-      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=complete`,
+      title: "Success Redirect (Complete)",
+      description: "Redirect for successful survey completion",
+      url: `${baseUrl}/api/track/complete?oi_session=[oi_session]&uid=[uid]`,
       icon: CheckCircle2,
-      color: "text-emerald-500",
-      bgColor: "bg-emerald-50"
+      color: "text-green-600",
+      bgColor: "bg-green-50"
     },
     {
-      title: "Terminate Redirect",
-      description: "Redirect for disqualified respondents",
-      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=terminate`,
+      title: "Terminate Redirect (Screen-out)",
+      description: "Redirect for ineligible respondents",
+      url: `${baseUrl}/api/track/terminate?oi_session=[oi_session]&uid=[uid]`,
       icon: XCircle,
-      color: "text-rose-500",
-      bgColor: "bg-rose-50"
-    },
-    {
-      title: "Quotafull Redirect",
-      description: "Redirect when project quotas are full",
-      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=quota`,
-      icon: Globe,
-      color: "text-orange-500",
-      bgColor: "bg-orange-50"
-    },
-    {
-      title: "Security Terminate",
-      description: "Redirect for fraud or security violations",
-      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=security_terminate`,
-      icon: ShieldAlert,
-      color: "text-red-700",
+      color: "text-red-600",
       bgColor: "bg-red-50"
     },
     {
-      title: "Duplicate IP",
-      description: "Redirect for repeated IP address attempts",
-      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=duplicate_ip`,
+      title: "Quota Full Redirect",
+      description: "Redirect when target numbers are met",
+      url: `${baseUrl}/api/track/quotafull?oi_session=[oi_session]&uid=[uid]`,
       icon: ShieldAlert,
       color: "text-amber-600",
       bgColor: "bg-amber-50"
     },
     {
-      title: "Duplicate String",
-      description: "Redirect for repeated browser signatures",
-      url: `${baseUrl}/status?code=${projectCode.toUpperCase()}&uid=[UID]&type=duplicate_string`,
-      icon: Lock,
-      color: "text-slate-600",
-      bgColor: "bg-slate-50"
-    }
+      title: "Security Terminate Redirect",
+      description: "Redirect for fraud or security violations",
+      url: `${baseUrl}/api/track/security?oi_session=[oi_session]&uid=[uid]`,
+      icon: ShieldAlert,
+      color: "text-gray-600",
+      bgColor: "bg-gray-50"
+    },
   ];
 
   return (
@@ -164,6 +149,14 @@ export default function ToolLinksPage() {
         </div>
       </div>
 
+      <Alert variant="default" className="bg-blue-50 border-blue-200">
+        <Info className="h-4 w-4 text-blue-600" />
+        <AlertDescription className="text-blue-700">
+          <strong>CRITICAL:</strong> Your survey platform must replace <strong>[oi_session]</strong> and <strong>[uid]</strong> placeholders 
+          automatically. These ensure we can correctly track respondent statuses and show your landing page.
+        </AlertDescription>
+      </Alert>
+
       <div className="grid gap-6 md:grid-cols-2">
         {/* Redirect Links Section */}
         <div className="space-y-6">
@@ -172,14 +165,9 @@ export default function ToolLinksPage() {
             <Card key={link.title} className="bg-white/40 border-slate-200/60 backdrop-blur-xl rounded-3xl shadow-sm hover:shadow-md transition-all group overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  {(() => {
-                    const Icon = link.icon as any;
-                    return (
-                      <div className={`p-3 rounded-2xl ${link.bgColor}`}>
-                        <Icon className={`w-5 h-5 ${link.color}`} />
-                      </div>
-                    );
-                  })()}
+                  <div className={`p-3 rounded-2xl ${link.bgColor}`}>
+                    <link.icon className={`w-5 h-5 ${link.color}`} />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">{link.title}</h3>
                     <p className="text-[10px] font-bold text-slate-400 mb-2">{link.description}</p>
@@ -228,7 +216,7 @@ export default function ToolLinksPage() {
                     type="text"
                     value={urls.complete}
                     onChange={(e) => setUrls(prev => ({ ...prev, complete: e.target.value }))}
-                    placeholder="https://yourdomain.com/complete?uid=[UID]"
+                    placeholder="https://yourdomain.com/complete?uid=[uid]"
                     className="w-full h-9 px-3 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all shadow-sm"
                   />
                 </div>
@@ -239,7 +227,7 @@ export default function ToolLinksPage() {
                     type="text"
                     value={urls.terminate}
                     onChange={(e) => setUrls(prev => ({ ...prev, terminate: e.target.value }))}
-                    placeholder="https://yourdomain.com/terminate?uid=[UID]"
+                    placeholder="https://yourdomain.com/terminate?uid=[uid]"
                     className="w-full h-9 px-3 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-all shadow-sm"
                   />
                 </div>
@@ -250,7 +238,7 @@ export default function ToolLinksPage() {
                     type="text"
                     value={urls.quota}
                     onChange={(e) => setUrls(prev => ({ ...prev, quota: e.target.value }))}
-                    placeholder="https://yourdomain.com/quota?uid=[UID]"
+                    placeholder="https://yourdomain.com/quota?uid=[uid]"
                     className="w-full h-9 px-3 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all shadow-sm"
                   />
                 </div>
@@ -261,7 +249,7 @@ export default function ToolLinksPage() {
                     type="text"
                     value={urls.security}
                     onChange={(e) => setUrls(prev => ({ ...prev, security: e.target.value }))}
-                    placeholder="https://yourdomain.com/security?uid=[UID]"
+                    placeholder="https://yourdomain.com/security?uid=[uid]"
                     className="w-full h-9 px-3 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all shadow-sm"
                   />
                 </div>
@@ -321,7 +309,7 @@ export default function ToolLinksPage() {
               <h4 className="text-xs font-black uppercase tracking-widest text-slate-500">Configuration Note</h4>
             </div>
             <p className="text-[11px] font-bold text-slate-400 leading-relaxed capitalize">
-              All redirect links require the <span className="text-primary font-black">[UID]</span> placeholder to be replaced by the respondent's unique identification string provided by your survey tool.
+              All redirect links require placeholders to be replaced by your survey tool. Use <span className="text-primary font-black">[oi_session]</span> to ensure status is recorded even if the user changes browsers or clear cookies.
             </p>
           </div>
         </div>

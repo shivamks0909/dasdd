@@ -64,6 +64,7 @@ function EditSupplierDialog({ supplier }: { supplier: Supplier }) {
       terminateUrl: supplier.terminateUrl || "",
       quotafullUrl: supplier.quotafullUrl || "",
       securityUrl: (supplier as any).security_url || (supplier as any).securityUrl || "",
+      uidMacro: supplier.uidMacro || "[uid]",
     },
   });
 
@@ -75,6 +76,7 @@ function EditSupplierDialog({ supplier }: { supplier: Supplier }) {
       terminateUrl: supplier.terminateUrl || "",
       quotafullUrl: supplier.quotafullUrl || "",
       securityUrl: (supplier as any).security_url || (supplier as any).securityUrl || "",
+      uidMacro: supplier.uidMacro || "[uid]",
     });
   }, [supplier, form]);
 
@@ -135,6 +137,19 @@ function EditSupplierDialog({ supplier }: { supplier: Supplier }) {
                       <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Unique Identifier (TAG)</FormLabel>
                       <FormControl>
                         <Input placeholder="DYN01" {...field} className="h-12 bg-slate-50 border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/5 transition-all text-slate-800 font-mono" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="uidMacro"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">UID Macro (Placeholder)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="[uid] or {uid}" {...field} className="h-12 bg-slate-50 border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/5 transition-all text-slate-800 font-mono" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -555,6 +570,7 @@ export default function SuppliersPage() {
       terminateUrl: "",
       quotafullUrl: "",
       securityUrl: "",
+      uidMacro: "[uid]",
     },
   });
 

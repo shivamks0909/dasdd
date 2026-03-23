@@ -1,0 +1,27 @@
+﻿[dotenv@17.3.1] injecting env (8) from .env -- tip: ≡ƒñû agentic secret storage: https://dotenvx.com/as2
+Γëí╞Æ├£├ç STARTING LIVE PATH REDIRECTION TEST...
+1. Setting up project: LIVE_PATH_TEST
+node : Project Upsert Error: {
+At line:1 char:1
++ node live-path-test.cjs 2>&1 | Out-File -FilePath live_test_output.tx 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Project Upsert Error: {:St 
+   ring) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  code: 'PGRST204',
+  details: null,
+  hint: null,
+  message: "Could not find the 'client_id' column of 'projects' in the 
+schema cache"
+}
+2. Mapping Survey URL: https://track.opinioninsights.in/r/sdaweq/VERCEL/[UID]
+Survey Mapping Error: {
+  code: '42P10',
+  details: null,
+  hint: null,
+  message: 'there is no unique or exclusion constraint matching the ON 
+CONFLICT specification'
+}
+3. Hitting Track Endpoint: http://localhost:3000/track?code=LIVE_PATH_TEST&country=IN&sup=DTMN&uid=USER_LIVE_TEST_123

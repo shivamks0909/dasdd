@@ -33,6 +33,10 @@ export const projects = pgTable("projects", {
   quotafullUrl: text("quotafull_url"),
   securityUrl: text("security_url"),
   customDomain: text("custom_domain"),
+  clientUidParam: text("client_uid_param").default("uid"),
+  uidParams: jsonb("uid_params").default({ primary: "uid", alternatives: ["RID", "respondent_id", "rid"] }),
+  forcePidAsUid: boolean("force_pid_as_uid").default(false),
+  uidInjectionType: text("uid_injection_type").default("query"),
 });
 
 export const countrySurveys = pgTable("country_surveys", {
@@ -54,6 +58,8 @@ export const suppliers = pgTable("suppliers", {
   terminateUrl: text("terminate_url"),
   quotafullUrl: text("quotafull_url"),
   securityUrl: text("security_url"),
+  uidMacro: text("uid_macro").default("[uid]"),
+  supplierCode: text("supplier_code"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -86,6 +92,12 @@ export const respondents = pgTable("respondents", {
   is_fake_suspected: boolean("is_fake_suspected").default(false),
   fake_reason: text("fake_reason"),
   redirect_status: text("redirect_status"),
+  urlUidPosition: text("url_uid_position"),
+  urlUidValue: text("url_uid_value"),
+  clickid: text("clickid").unique(),
+  clientUidParam: text("client_uid_param").default("uid"),
+  uidInjectionType: text("uid_injection_type").default("query"),
+  passthroughData: jsonb("passthrough_data").default({}),
 });
 
 export const activityLogs = pgTable("activity_logs", {
@@ -200,6 +212,10 @@ export const projectSchema = z.object({
   quotafullUrl: z.string().nullable().optional(),
   securityUrl: z.string().nullable().optional(),
   customDomain: z.string().nullable().optional(),
+  clientUidParam: z.string().default("uid"),
+  uidParams: z.any().optional(),
+  forcePidAsUid: z.boolean().default(false),
+  uidInjectionType: z.string().default("query"),
 });
 
 export const insertProjectSchema = projectSchema.omit({
@@ -239,6 +255,8 @@ export const supplierSchema = z.object({
   terminateUrl: z.string().nullable().optional(),
   quotafullUrl: z.string().nullable().optional(),
   securityUrl: z.string().nullable().optional(),
+  uidMacro: z.string().default("[uid]"),
+  supplierCode: z.string().nullable().optional(),
   createdAt: z.date().optional(),
 });
 
@@ -285,6 +303,12 @@ export const respondentSchema = z.object({
   isFakeSuspected: z.boolean().default(false),
   fakeReason: z.string().nullable().optional(),
   redirectStatus: z.string().nullable().optional(),
+  urlUidPosition: z.string().nullable().optional(),
+  urlUidValue: z.string().nullable().optional(),
+  clickid: z.string().nullable().optional(),
+  clientUidParam: z.string().default("uid"),
+  uidInjectionType: z.string().default("query"),
+  passthroughData: z.any().optional(),
 });
 
 export const insertRespondentSchema = respondentSchema.omit({

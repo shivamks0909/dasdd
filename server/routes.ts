@@ -28,7 +28,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  console.log("[Routes] registerRoutes started");
+  console.log("[Routes] registerRoutes started - Registering API routes FIRST");
   setupAuth(app);
 
   // Seed admin in the background
@@ -107,6 +107,7 @@ export async function registerRoutes(
   });
 
   // ADMIN STATS
+  console.log("[Routes] Registering /api/admin/* routes");
   app.get("/api/admin/stats", requireAdmin, async (_req: Request, res: Response) => {
     const stats = await storage.getDashboardStats();
     return res.json(stats);
@@ -128,10 +129,16 @@ export async function registerRoutes(
   });
 
   app.get("/api/admin/respondents", requireAdmin, async (_req: Request, res: Response) => {
-    const list = await storage.getRespondents();
-    // Filter sensitive fields like s2sToken before sending to client
-    const safeList = list.map(({ s2sToken, ...rest }) => rest);
-    return res.json(safeList);
+    try {
+      const list = await storage.getRespondents();
+      // Filter sensitive fields like s2sToken before sending to client
+      const safeList = list.map(({ s2sToken, verifyHash, ...rest }: any) => rest);
+      res.setHeader("Content-Type", "application/json");
+      return res.json(safeList);
+    } catch (error: any) {
+      console.error("Respondents API Error:", error);
+      return res.status(500).json({ message: error.message || "Failed to fetch respondents" });
+    }
   });
 
   app.get("/api/admin/responses/export", requireAdmin, async (_req: Request, res: Response) => {
@@ -480,8 +487,13 @@ export async function registerRoutes(
   });
 
   app.post("/api/clients", requireAdmin, async (req: Request, res: Response) => {
-    const client = await storage.createClient(req.body);
-    return res.status(201).json(client);
+    try {
+      const client = await storage.createClient(req.body);
+      return res.status(201).json(client);
+    } catch (error: any) {
+      console.error("Create Client Error:", error);
+      return res.status(500).json({ message: error.message || "Failed to create client" });
+    }
   });
 
   app.patch("/api/clients/:id", requireAdmin, async (req: Request, res: Response) => {
@@ -739,13 +751,17 @@ export async function registerRoutes(
   // OR https://router.domain.com/t/{PROJECT_CODE}?country={CC}&sup={SUP_CODE}&uid={SUP_RID}
   // sup and uid are OPTIONAL — links work with or without a supplier
   const handleTrackingRequest = async (req: Request, res: Response, codeFromPath?: string) => {
+    console.log("!!! CRITICAL DEBUG: handleTrackingRequest ENTERED !!!");
     const { code, country, sup, uid, rid, toid, zid, pid, mid, sid, ...remainingParams } = req.query;
     const projectCode = (codeFromPath || code) as string;
-    const countryCode = country as string;
+    const countryCode = country as string || "IN";
     
     // Normalize Supplier RID from common parameter names used by various platforms
     // rid (Dynata), toid (Lucid), zid (Cint), uid (Generic), pid (Pollfish), mid (Mindshare), sid (SurveySampling)
     const supplierRid = (uid || rid || toid || zid || pid || mid || sid) as string;
+
+    console.log(`[Routes] /track hit: codeFromPath=${codeFromPath}, query=${JSON.stringify(req.query)}`);
+    console.log(`[Routes] Extracted: project=${projectCode}, country=${countryCode}, supplier=${sup}, supRid=${supplierRid}`);
     
     // Ensure all these parameters are preserved in extraParams for auto-injection/appending
     const extraParams: Record<string, string> = { ...remainingParams as Record<string, string> };
@@ -767,6 +783,8 @@ export async function registerRoutes(
       userAgent: req.headers["user-agent"]
     });
 
+    console.log(`[Routes] Tracking Result for ${projectCode}:`, JSON.stringify(result));
+
     if (result.error) {
       if (result.error.status === 302 && result.error.internalRedirect) {
         return res.redirect(result.error.internalRedirect);
@@ -781,19 +799,52 @@ export async function registerRoutes(
     return res.status(500).send("Unknown error");
   };
 
-  app.get("/track", (req, res) => handleTrackingRequest(req, res));
+  console.log("!!! [Routes] REGISTERING TRACKING ROUTES NOW !!!");
+  app.get("/track", (req, res) => {
+    console.log("!!! [Routes] /TRACK GET REQUEST RECEIVED !!!");
+    return handleTrackingRequest(req, res);
+  });
   app.get("/t/:code", (req, res) => handleTrackingRequest(req, res, req.params.code));
 
   // ====== CALLBACK ENDPOINTS ======
   const handleCallback = async (req: Request, res: Response, status: string) => {
-    const { oi_session } = req.query;
-    if (!oi_session) return res.status(400).send("Missing oi_session");
+    const { oi_session, clickid, pid, uid, cid, guid, rid, session_token } = req.query;
+    
+    let respondent: Respondent | undefined;
 
-    const respondent = await storage.getRespondentBySession(oi_session as string);
-    if (!respondent) return res.status(404).send("Session not found");
+    // 1. Try finding by oi_session (Cleanest)
+    if (oi_session) {
+      respondent = await storage.getRespondentBySession(oi_session as string);
+      console.log(`[Callback] Lookup by oi_session (${oi_session}): ${respondent ? 'Found' : 'Not Found'}`);
+    }
+
+    // 2. Try finding by clickid (Robustness)
+    if (!respondent && clickid) {
+       respondent = await storage.getRespondentByClickid(clickid as string);
+       console.log(`[Callback] Lookup by clickid (${clickid}): ${respondent ? 'Found' : 'Not Found'}`);
+    }
+
+    // 3. Try finding by Project Code + Supplier UID (Recovery)
+    if (!respondent && pid && uid) {
+      respondent = await storage.getRespondentBySupplierRid(pid as string, uid as string);
+      console.log(`[Callback] Lookup by pid+uid (${pid}+${uid}): ${respondent ? 'Found' : 'Not Found'}`);
+    }
+
+    if (!respondent) {
+        console.warn(`[Callback] Could not find session. Status: ${status}, Params:`, JSON.stringify(req.query));
+        // If we can't find it, show a meaningful landing page instead of raw error
+        let statusToUse = status;
+        if (statusToUse === 'quota') statusToUse = 'quotafull';
+        const landingPath = (routerService.internalPathMap as any)[statusToUse] || '/pages/terminate';
+        return res.redirect(`${landingPath}?status=${statusToUse}&error=session_not_found`);
+    }
 
     if (respondent.status !== 'started' && respondent.status !== 'pending') {
-      return res.status(400).send("Respondent already reached a final status");
+      console.log(`[Callback] Session ${respondent.oiSession} already has status ${respondent.status}. Redirecting to final destination.`);
+      const supplier = respondent.supplierCode ? await storage.getSupplierByCode(respondent.supplierCode) : undefined;
+      const project = await storage.getProjectByCode(respondent.projectCode);
+      const finalRedirectUrl = routerService.getStatusRedirectUrl(respondent.status, respondent, supplier, project);
+      return res.redirect(finalRedirectUrl);
     }
 
     let finalStatus = status;
@@ -1006,6 +1057,9 @@ export async function registerRoutes(
               terminateUrl: "https://example.com/terminate?rid={RID}",
               quotafullUrl: "https://example.com/quotafull?rid={RID}",
               securityUrl: "https://example.com/security?rid={RID}",
+              clientUidParam: "uid",
+              forcePidAsUid: false,
+              uidInjectionType: "query"
             });
             createdProjects.push(p);
             results.push(`Created project: ${pd.projectCode}`);
@@ -1027,7 +1081,7 @@ export async function registerRoutes(
         try {
           const existing = await storage.getSupplierByCode(sd.code);
           if (!existing) {
-            await storage.createSupplier({ ...sd, passwordHash: null });
+            await storage.createSupplier({ ...sd, passwordHash: null, uidMacro: "[uid]" });
             results.push(`Created supplier: ${sd.code}`);
           } else {
             results.push(`Skipped supplier (exists): ${sd.code}`);
@@ -1075,6 +1129,8 @@ export async function registerRoutes(
               status,
               s2sVerified: status === "complete",
               fraudScore: status === "security-terminate" ? 0.92 : 0.0,
+              clientUidParam: "uid",
+              uidInjectionType: "query"
             });
 
             respondentCount++;

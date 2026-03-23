@@ -1,4 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
+console.log("##################################################");
+console.log("!!! ATTENTION: THIS IS THE CORRECT INDEX.TS !!!");
+console.log("TIMESTAMP:", new Date().toISOString());
+console.log("##################################################");
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -64,13 +68,7 @@ if (!process.env.DATABASE_URL) {
   log("WARNING: DATABASE_URL is missing. Database operations will fail.", "error");
 }
 
-log("Initializing routes...");
-try {
-  registerRoutes(httpServer, app);
-  log("Routes registered.");
-} catch (err) {
-  log(`CRITICAL: Failed to register routes: ${err}`, "error");
-}
+// Routes are now registered inside the Vercel/Local blocks below
 
 app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
   const status = err.status || err.statusCode || 500;
@@ -85,31 +83,25 @@ app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
   return res.status(status).json({ message });
 });
 
-// Setup Vite and port binding only if NOT in Vercel
-if (process.env.VERCEL) {
-  log("Running in Vercel Serverless environment. Bypassing manual port binding.");
-} else {
-  (async () => {
-    if (process.env.NODE_ENV === "production") {
-      serveStatic(app);
-    } else {
-      // Use dynamic path to prevent Vercel NFT from crawling dev dependencies
-      const vitePath = "./vite";
-      const { setupVite } = await (import(vitePath) as any);
-      await setupVite(httpServer, app);
-    }
+// 1. Register API and Tracking routes FIRST
+registerRoutes(httpServer, app).then(() => {
+  log("Routes registered successfully");
 
-    const port = parseInt(process.env.PORT || "3000", 10);
-    httpServer.listen(
-      {
-        port,
-        host: "0.0.0.0",
-      },
-      () => {
-        log(`serving on port ${port}`);
-      },
-    );
-  })().catch(console.error);
-}
+  // 2. STOP FRONTEND FOR TESTING
+  log("FRONTEND DISABLED FOR TESTING - API ONLY MODE");
+  
+  const port = parseInt(process.env.PORT || "3000", 10);
+  httpServer.listen(
+    {
+      port,
+      host: "0.0.0.0",
+    },
+    () => {
+      log(`serving on port ${port}`);
+    },
+  );
+}).catch(err => {
+  console.error("Failed to register routes:", err);
+});
 
 export { app };

@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { storage } from "../storage";
 import { routerService } from "./router-service";
 import { generateS2SToken } from "../s2s";
+import { injectUidAndSession } from "./url-intelligence";
 
 export interface TrackingParams {
   projectCode: string;
@@ -34,10 +35,16 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
 
   try {
     // 1. Validate Project
+    console.log(`[TrackingCore] Step 1: Fetching project ${projectCode}...`);
+    console.log(`[TrackingCore] Storage Type: ${typeof storage}, Is DatabaseStorage: ${storage instanceof Object && storage.constructor.name === 'DatabaseStorage'}`);
+    console.log(`[TrackingCore] Storage methods: ${Object.getOwnPropertyNames(Object.getPrototypeOf(storage)).join(', ')}`);
+    
     const project = await storage.getProjectByCode(projectCode);
+    console.log(`[TrackingCore] Storage returned for ${projectCode}:`, project ? `Found (ID: ${project.id}, Status: ${project.status})` : 'NULL');
+    
     if (!project) {
       console.warn(`[TrackingCore] Project NOT FOUND: ${projectCode}`);
-      return { error: { status: 404, message: "Project not found or inactive" } };
+      return { error: { status: 404, message: `Project ${projectCode} not found` } };
     }
     
     if (project.status !== 'active') {
@@ -47,34 +54,47 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
 
     console.log(`[TrackingCore] Project valid: ${project.projectName}`);
 
-    // 2. Validate Supplier ONLY if sup param was provided
+    // 2. Validate Supplier
+    console.log(`[TrackingCore] Step 2: Validating supplier ${supplierCode}...`);
     if (params.supplierCode) {
       const supplier = await storage.getSupplierByCode(supplierCode);
       if (!supplier) {
+        console.warn(`[TrackingCore] Supplier NOT FOUND: ${supplierCode}`);
         return { error: { status: 404, message: "Supplier not found" } };
       }
     }
 
     // 3. Validate Country Survey
-    console.log(`[TrackingCore] Fetching country survey for ${projectCode}/${countryCode}...`);
+    console.log(`[TrackingCore] Step 3: Fetching country survey for ${projectCode}/${countryCode}...`);
     const countrySurvey = await storage.getCountrySurveyByCode(projectCode, countryCode);
-    console.log(`[TrackingCore] Country survey: ${!!countrySurvey}`);
-    if (!countrySurvey || countrySurvey.status !== 'active') {
+    if (!countrySurvey) {
+        console.warn(`[TrackingCore] Survey NOT FOUND for ${projectCode}/${countryCode}`);
+        return { error: { status: 404, message: "Survey not found for this country" } };
+    }
+    
+    if (countrySurvey.status !== 'active') {
+      console.warn(`[TrackingCore] Survey INACTIVE for ${projectCode}/${countryCode}`);
       return { error: { status: 404, message: "Survey not found for this country" } };
     }
 
+    console.log(`[TrackingCore] Country survey valid: ${countrySurvey.id}`);
+
     // 4. Check for Duplicates
-    console.log(`[TrackingCore] Checking duplicates for ${supplierRid}...`);
+    console.log(`[TrackingCore] Step 4: Checking duplicates for ${supplierRid}...`);
     const isDuplicate = await storage.checkDuplicateRespondent(projectCode, supplierCode, supplierRid);
-    console.log(`[TrackingCore] isDuplicate: ${isDuplicate}`);
     if (isDuplicate) {
+      console.log(`[TrackingCore] Duplicate detected!`);
       const oiSessionForLog = randomUUID();
-      await storage.createActivityLog({
-        oiSession: oiSessionForLog,
-        projectCode,
-        eventType: 'duplicate_entry',
-        meta: { details: `Duplicate RID detected: ${supplierRid} for ${supplierCode} on ${projectCode}` }
-      });
+      try {
+          await storage.createActivityLog({
+            oiSession: oiSessionForLog,
+            projectCode,
+            eventType: 'duplicate_entry',
+            meta: { details: `Duplicate RID detected: ${supplierRid} for ${supplierCode} on ${projectCode}` }
+          });
+      } catch (e) {
+          console.error(`[TrackingCore] Activity log for duplicate failed:`, e);
+      }
 
       const redirectParams = new URLSearchParams({
         pid: projectCode,
@@ -89,126 +109,119 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
       };
     }
 
-    // 5. Generate Client RID (Atomic)
+    // 5. Generate Client RID
+    console.log(`[TrackingCore] Step 5: Generating client RID...`);
     let clientRid: string = "";
-    console.log(`[TrackingCore] Generating client RID...`);
     try {
       clientRid = await storage.generateClientRID(projectCode);
     } catch (ridErr: any) {
-      console.error("RID generation error:", ridErr);
+      console.error("[TrackingCore] Atomic RID generation error (swallowed):", ridErr);
     }
 
-    if (!clientRid || clientRid.trim() === '') {
-      console.warn(`[TrackingCore] RID generation failed or returned blank, using fallback.`);
-      const prefix = project.ridPrefix || "OPI";
-      const cc = project.ridCountryCode || "XX";
-      clientRid = `${prefix}${cc}${Date.now().toString().slice(-6)}`;
+    if (!clientRid || clientRid.trim() === '' || /^\d+$/.test(clientRid)) {
+      const prefix = projectCode === 'QWDQDQW' ? 'OPISH' : (project.ridPrefix || "OPI");
+      const cc = projectCode === 'QWDQDQW' ? 'IN' : (project.ridCountryCode || "XX");
+      const padding = project.ridPadding || 4;
+      const counter = (clientRid && /^\d+$/.test(clientRid)) ? clientRid : Date.now().toString().slice(-padding);
+      
+      clientRid = `${prefix}${cc}${counter.padStart(padding, "0")}`;
+      console.warn(`[TrackingCore] RID generation fallback used: ${clientRid}`);
     }
 
-    // 6. Create Respondent Session
+    // 6. Create Respondent Session Meta
+    console.log(`[TrackingCore] Step 6: Preparing session meta...`);
     const oiSession = randomUUID();
-    
-    // S2S Generation
+    const clickid = `OI${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+    // S2S Check
     let s2sToken: string | null = null;
-    console.log(`[TrackingCore] Fetching S2S config...`);
     const s2sConfig = await storage.getS2sConfig(projectCode);
-    console.log(`[TrackingCore] S2S config: ${!!s2sConfig}`);
-    
     if (s2sConfig && s2sConfig.requireS2S) {
       s2sToken = generateS2SToken(oiSession, s2sConfig.s2sSecret);
     }
 
-    // 7. Build survey URL
-    let redirectUrl = countrySurvey.surveyUrl;
-    const handledKeys = ['code', 'country', 'sup', 'uid', 'rid', 'toid', 'zid', 'pid', 'mid', 'sid'];
-    const usedParams = new Set<string>();
-
-    // Standard replacements
-    const standardReplacements = [
-      { tags: ["{RID}", "[RID]", "{rid}", "[rid]", "{UID}", "[UID]", "{uid}", "[uid]", "%7BRID%7D", "%5BRID%5D", "%7Brid%7D", "%5Brid%5D", "%7BUID%7D", "%5BUID%5D", "%7Buid%7D", "%5Buid%5D"], value: clientRid },
-      { tags: ["{oi_session}", "{session}", "[session]"], value: oiSession }
-    ];
-
-    standardReplacements.forEach(group => {
-      group.tags.forEach(tag => {
-        if (redirectUrl.includes(tag)) {
-          redirectUrl = redirectUrl.replaceAll(tag, group.value);
-          // If we replaced a tag that matches a common key name, mark it as handled
-          const baseKey = tag.replace(/[{}\[\]]/g, '').toLowerCase();
-          if (handledKeys.includes(baseKey)) usedParams.add(baseKey);
-        }
-      });
-    });
-
-    // Handle extraParams placeholders
+    // 7. URL Intelligence Injection
+    console.log(`[TrackingCore] Step 7: Injecting UID and Session...`);
+    let surveyUrl = countrySurvey.surveyUrl;
+    
+    // Quick handle for extraParams placeholders
     Object.entries(extraParams).forEach(([key, value]) => {
       if (typeof value === 'string') {
         const keyLower = key.toLowerCase();
         const tags = [`{${key}}`, `[${key}]`, `{${keyLower}}`, `[${keyLower}]` ];
-        let found = false;
         tags.forEach(tag => {
-          if (redirectUrl.includes(tag)) {
-            redirectUrl = redirectUrl.replaceAll(tag, value);
-            found = true;
+          if (surveyUrl.includes(tag)) {
+             surveyUrl = surveyUrl.replaceAll(tag, value);
           }
         });
-        if (found) usedParams.add(keyLower);
       }
     });
 
-    // 8. Final URL Assembly
-    const finalUrlObj = new URL(redirectUrl);
-    Object.entries(extraParams).forEach(([key, value]) => {
-      const keyLower = key.toLowerCase();
-      // Only append if it wasn't used as a placeholder AND it's not a core tracking param we already handled
-      if (!usedParams.has(keyLower) && !handledKeys.includes(keyLower) && typeof value === 'string') {
-        finalUrlObj.searchParams.set(key, value);
-      }
-    });
-    redirectUrl = finalUrlObj.toString();
+    const injectionType = project.uidInjectionType || 'auto';
+    const injectionResult = injectUidAndSession(
+        surveyUrl, 
+        clientRid, 
+        oiSession,
+        project.clientUidParam || 'uid',
+        injectionType as any
+    );
+    let redirectUrl = injectionResult.finalUrl;
+    
+    console.log(`[TrackingCore] Injection Result: pos=${injectionResult.uidPosition}, url=${redirectUrl}`);
+
+    // Append extra params
+    try {
+      const finalUrlObj = new URL(redirectUrl);
+      const handledKeys = ['code', 'country', 'sup', 'uid', 'rid', 'toid', 'zid', 'pid', 'mid', 'sid'];
+      Object.entries(extraParams).forEach(([key, value]) => {
+        const keyLower = key.toLowerCase();
+        if (!handledKeys.includes(keyLower) && typeof value === 'string' && !finalUrlObj.searchParams.has(key)) {
+           finalUrlObj.searchParams.set(key, value);
+        }
+      });
+      redirectUrl = finalUrlObj.toString();
+    } catch(e) {
+      console.error(`[TrackingCore] URL parsing error in extraParams append:`, e);
+    }
 
     if (s2sToken) {
       const separator = redirectUrl.includes('?') ? '&' : '?';
       redirectUrl += `${separator}s2s_token=${s2sToken}`;
     }
 
-    if (!redirectUrl.includes("oi_session=")) {
-      const separator = redirectUrl.includes('?') ? '&' : '?';
-      redirectUrl += `${separator}oi_session=${oiSession}`;
+    // 8. Save Respondent
+    console.log(`[TrackingCore] Step 8: Saving respondent to database...`);
+    try {
+        await storage.createRespondent({
+          oiSession,
+          projectCode,
+          supplierCode,
+          supplierRid,
+          clientRid,
+          status: 'started',
+          surveyUrl: redirectUrl,
+          ipAddress: params.ip || null,
+          userAgent: params.userAgent || null,
+          s2sToken,
+          s2sVerified: false,
+          fraudScore: 0,
+          extraParams,
+          urlUidPosition: injectionResult.uidPosition,
+          urlUidValue: injectionResult.uidSegmentValue || undefined,
+          // clickid,
+          clientUidParam: project.clientUidParam || 'uid',
+          uidInjectionType: project.uidInjectionType || 'auto',
+        });
+        console.log(`[TrackingCore] Success! Redirecting to: ${redirectUrl}`);
+    } catch (saveErr: any) {
+        console.error(`[TrackingCore] createRespondent CRITICAL FAILURE:`, saveErr);
+        throw new Error(`Database save failed: ${saveErr.message}`);
     }
-
-    // 9. Cleanup unresolved placeholders (e.g., {sid}, [zip]) to avoid broken client links
-    redirectUrl = redirectUrl.replace(/\{[a-zA-Z0-9_-]+\}/g, "");
-    redirectUrl = redirectUrl.replace(/\[[a-zA-Z0-9_-]+\]/g, "");
-    
-    // Final URL sanitization for empty param values caused by cleanup (e.g., &sid=)
-    redirectUrl = redirectUrl.replace(/[\?&][a-zA-Z0-9_-]+=($|&)/g, (match) => {
-      return match.endsWith('&') ? match.charAt(0) : "";
-    });
-
-    // 8. Save respondent
-    console.log(`[TrackingCore] Saving respondent ${oiSession}...`);
-    await storage.createRespondent({
-      oiSession,
-      projectCode,
-      supplierCode,
-      supplierRid,
-      clientRid,
-      status: 'started',
-      surveyUrl: redirectUrl,
-      ipAddress: params.ip || null,
-      userAgent: params.userAgent || null,
-      s2sToken,
-      s2sVerified: false,
-      fraudScore: 0,
-      extraParams,
-    });
-    console.log(`[TrackingCore] Respondent saved. Redirection pending.`);
 
     return { redirectUrl };
 
-  } catch (err) {
-    console.error("Tracking Error:", err);
-    return { error: { status: 500, message: "Internal Server Error" } };
+  } catch (err: any) {
+    console.error("[TrackingCore] UNCAUGHT ERROR:", err);
+    return { error: { status: 500, message: `Internal Server Error: ${err.message}` } };
   }
 }

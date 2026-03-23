@@ -43,3 +43,4 @@ err.txt
 err2.txt
 
 .vercel
+.env*.local

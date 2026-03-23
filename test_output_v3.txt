@@ -1,0 +1,22 @@
+﻿[dotenv@17.3.1] injecting env (8) from .env -- tip: ≡ƒöÉ prevent building .env in docker: https://dotenvx.com/prebuild
+InsForge Client Initialized: {
+  baseUrl: 'https://cpim43si.us-west.insforge.app',
+  hasDatabase: true,
+  hasAuth: true,
+  hasStorage: true
+}
+≡ƒÜÇ STARTING FINAL E2E VERIFICATION (V3)...
+
+--- TEST 1: UID REDIRECTION ---
+Target UID: V3_TEST_R5ALO
+Hitting track: http://localhost:3000/track?code=SDAWEQ&country=IN&sup=DTMN&uid=V3_TEST_R5ALO
+node.exe : 
+At line:1 char:1
++ & "E:\Program Files\nodejs/node.exe" "E:\Program Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteExcepti 
+   on
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+≡ƒö┤ ERROR: fetch failed

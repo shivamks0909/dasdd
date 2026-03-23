@@ -1,0 +1,30 @@
+﻿[dotenv@17.3.1] injecting env (8) from .env -- tip: ΓÜÖ∩╕Å  write to custom object with { processEnv: myObject }
+Γëí╞Æ├£├ç STARTING LIVE PATH REDIRECTION TEST...
+1. Setting up project: LIVE_PATH_TEST
+node : Project Upsert Error: {
+At line:1 char:1
++ node live-path-test.cjs 2>&1 | Out-File -FilePath live_test_output_ne 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Project Upsert Error: {:St 
+   ring) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  code: 'PGRST204',
+  details: null,
+  hint: null,
+  message: "Could not find the 'code' column of 'projects' in the 
+schema cache"
+}
+2. Mapping Survey URL: https://track.opinioninsights.in/r/sdaweq/VERCEL/[UID]
+Survey Mapping Error: {
+  code: '23502',
+  details: 'Failing row contains (60822294-e450-4946-ac15-1b0fb7c55c42, 
+null, LIVE_PATH_TEST, IN, 
+https://track.opinioninsights.in/r/sdaweq/VERCEL/[UID], active, 
+2026-03-23 01:29:13.170217+00).',
+  hint: null,
+  message: 'null value in column "project_id" of relation 
+"country_surveys" violates not-null constraint'
+}
+3. Hitting Track Endpoint: http://localhost:3000/track?code=LIVE_PATH_TEST&country=IN&sup=DTMN&uid=USER_LIVE_TEST_123

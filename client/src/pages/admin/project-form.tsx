@@ -11,6 +11,7 @@ import {
   Globe,
   Users,
   Link as LinkIcon,
+  Link2,
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
@@ -165,6 +166,10 @@ export default function ProjectFormPage() {
     rid_country_code: '',
     rid_padding: 4,
     rid_counter: 1,
+    // UID config
+    client_uid_param: 'uid',
+    force_pid_as_uid: false,
+    uid_injection_type: 'auto' as 'query' | 'path' | 'auto',
     // Step 2
     countries: [] as CountryRow[],
     supplier_id: '',
@@ -216,6 +221,10 @@ export default function ProjectFormPage() {
         rid_country_code: projectData.ridCountryCode || '',
         rid_padding: projectData.ridPadding || 4,
         rid_counter: projectData.ridCounter || 1,
+        // UID config
+        client_uid_param: projectData.clientUidParam || 'uid',
+        force_pid_as_uid: !!projectData.forcePidAsUid,
+        uid_injection_type: projectData.uidInjectionType || 'auto',
       }));
     }
   }, [isEditing, isProjectLoaded, projectData]);
@@ -312,6 +321,9 @@ export default function ProjectFormPage() {
         ridCountryCode: formData.rid_country_code,
         ridPadding: formData.rid_padding,
         ridCounter: formData.rid_counter,
+        clientUidParam: formData.client_uid_param,
+        forcePidAsUid: formData.force_pid_as_uid,
+        uidInjectionType: formData.uid_injection_type,
       });
       const project = await projectRes.json();
 
@@ -549,6 +561,49 @@ export default function ProjectFormPage() {
                       </div>
                       <div className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full font-black text-[9px] uppercase tracking-widest shadow-sm">
                         Pattern Validated
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* UID/Injection Block */}
+                  <div className="md:col-span-2 mt-2 p-10 bg-blue-50/30 border border-blue-100/50 shadow-inner rounded-[2.5rem] relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 grayscale">
+                      <Link2 className="w-16 h-16" />
+                    </div>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600 mb-8 ml-1">UID Delivery Logic</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                      <div className="space-y-2">
+                        <label className="text-slate-400 text-[9px] font-black uppercase tracking-widest ml-1">Param Name</label>
+                        <input
+                          type="text"
+                          value={formData.client_uid_param}
+                          onChange={e => update('client_uid_param', e.target.value)}
+                          className="w-full h-12 bg-white/80 border-slate-200 rounded-xl px-4 font-mono font-bold"
+                          placeholder="uid"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-slate-400 text-[9px] font-black uppercase tracking-widest ml-1">Injection Method</label>
+                        <select
+                          value={formData.uid_injection_type}
+                          onChange={e => update('uid_injection_type', e.target.value)}
+                          className="w-full h-12 bg-white/80 border-slate-200 rounded-xl px-4 font-black text-[10px] uppercase tracking-widest outline-none"
+                        >
+                          <option value="auto">Auto-Detect</option>
+                          <option value="query">Query Parameter</option>
+                          <option value="path">URL Path</option>
+                        </select>
+                      </div>
+                      <div className="space-y-4 pt-6">
+                        <label className="flex items-center gap-3 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={formData.force_pid_as_uid}
+                            onChange={e => update('force_pid_as_uid', e.target.checked)}
+                            className="size-5 rounded-lg border-slate-300 text-primary focus:ring-primary/20 transition-all cursor-pointer"
+                          />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-800 transition-colors">Force PID as UID</span>
+                        </label>
                       </div>
                     </div>
                   </div>
