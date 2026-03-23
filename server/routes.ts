@@ -901,47 +901,72 @@ export async function registerRoutes(
   app.get("/quotafull", (req, res) => handleCallback(req, res, "quotafull"));
   app.get("/security-terminate", (req, res) => handleCallback(req, res, "security-terminate"));
 
+  // /api/track/* aliases — these are the URLs the dashboard "Official Redirects" page shows users to
+  // They accept either oi_session (cleanest) or uid+pid pair for lookup
+  app.get("/api/track/complete", (req, res) => handleCallback(req, res, "complete"));
+  app.get("/api/track/terminate", (req, res) => handleCallback(req, res, "terminate"));
+  app.get("/api/track/quotafull", (req, res) => handleCallback(req, res, "quotafull"));
+  app.get("/api/track/quota", (req, res) => handleCallback(req, res, "quotafull"));
+  app.get("/api/track/security", (req, res) => handleCallback(req, res, "security-terminate"));
+
   // Unified Status Endpoint using UID and Project Code
-  // Uses InsForge HTTP SDK to avoid direct TCP database connections that time out locally
+  // Accepts: code=PROJCODE, type=complete|terminate|quota|quotafull, uid= (optional, may be empty if ExploreResearch doesn't return it)
+  // Also accepts oi_session= directly for cleanest lookup
   app.get("/status", async (req: Request, res: Response) => {
-    const { code, uid, type } = req.query;
+    const { code, uid, type, oi_session } = req.query;
     if (!code || !type) {
       return res.status(400).send("Missing required parameters: code, type");
     }
 
     try {
-      // Use InsForge HTTP SDK instead of raw Drizzle (avoids ETIMEDOUT on local)
-      const { data: rows, error } = await insforge.database
-        .from('respondents')
-        .select('*')
-        .eq('project_code', (code as string).toUpperCase())
-        .eq('supplier_rid', uid as string)
-        .order('started_at', { ascending: false })
-        .limit(1);
+      // Lookup priority: oi_session (always embedded in outgoing URLs) → supplier_rid (uid) → sent_uid fallback
+      let raw: any = null;
 
-      if (error) throw error;
-
-      let raw = rows?.[0];
-      
-      // Fallback: If client mistakenly used this link (meant for suppliers), 
-      // the uid in the URL will be the sent_uid (OPIN...) instead of supplier_rid.
-      if (!raw && uid) {
-        const { data: rowsFallback } = await insforge.database
+      // 1. Try oi_session first — most reliable since we always embed it in survey URLs
+      const oi_session_str = oi_session as string || '';
+      if (oi_session_str) {
+        const { data: bySession } = await insforge.database
           .from('respondents')
           .select('*')
-          .eq('sent_pid', (code as string).toUpperCase())
+          .eq('oi_session', oi_session_str)
+          .limit(1);
+        raw = bySession?.[0] || null;
+        if (raw) console.log(`[Status] Found by oi_session: ${oi_session_str}`);
+      }
+
+      // 2. Try supplier_rid (the uid ExploreResearch returns back)
+      if (!raw && uid && (uid as string).trim() !== '') {
+        const { data: byRid } = await insforge.database
+          .from('respondents')
+          .select('*')
+          .eq('project_code', (code as string).toUpperCase())
+          .eq('supplier_rid', uid as string)
+          .order('started_at', { ascending: false })
+          .limit(1);
+        raw = byRid?.[0] || null;
+        if (raw) console.log(`[Status] Found by supplier_rid: ${uid}`);
+      }
+
+      // 3. Fallback: uid might be our sent_uid (client_rid) not supplier_rid
+      if (!raw && uid && (uid as string).trim() !== '') {
+        const { data: bySentUid } = await insforge.database
+          .from('respondents')
+          .select('*')
           .eq('sent_uid', uid as string)
           .order('started_at', { ascending: false })
           .limit(1);
-        raw = rowsFallback?.[0];
+        raw = bySentUid?.[0] || null;
+        if (raw) console.log(`[Status] Found by sent_uid: ${uid}`);
       }
+
       if (!raw) {
-        // No session found - redirect straight to the internal status landing page
+        // No session found - redirect gracefully to the internal landing page
+        console.warn(`[Status] Session not found. code=${code}, uid=${uid}, oi_session=${oi_session}`);
         let statusToUse = (type as string).toLowerCase();
         if (statusToUse === 'quota') statusToUse = 'quotafull';
         else if (['security_terminate', 'duplicate', 'duplicate_ip', 'duplicate_string'].includes(statusToUse)) statusToUse = 'security';
         const landingPath = (routerService.internalPathMap as any)[statusToUse] || '/pages/terminate';
-        return res.redirect(`${landingPath}?pid=${(code as string).toUpperCase()}&uid=${uid}`);
+        return res.redirect(`${landingPath}?pid=${(code as string).toUpperCase()}&uid=${uid || ''}`);
       }
 
       // Map snake_case to camelCase for handleCallback compatibility
@@ -956,6 +981,16 @@ export async function registerRoutes(
     } catch (e) {
       console.error("Error processing /status endpoint:", e);
       return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.get("/api/debug-wedqw", async (req: Request, res: Response) => {
+    try {
+      const { data: p } = await insforge.database.from('projects').select('*').eq('project_code', 'WEDQW');
+      const { data: r } = await insforge.database.from('respondents').select('*').eq('project_code', 'WEDQW').order('started_at', { ascending: false }).limit(1);
+      return res.json({ project: p, respondent: r });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
     }
   });
 
