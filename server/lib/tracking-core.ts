@@ -40,7 +40,7 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
     console.log(`[TrackingCore] Storage methods: ${Object.getOwnPropertyNames(Object.getPrototypeOf(storage)).join(', ')}`);
     
     const project = await storage.getProjectByCode(projectCode);
-    console.log(`[TrackingCore] Storage returned for ${projectCode}:`, project ? `Found (ID: ${project.id}, Status: ${project.status})` : 'NULL');
+    console.log(`[TrackingCore] getProjectByCode result: ${project ? 'SUCCESS' : 'NULL'}`);
     
     if (!project) {
       console.warn(`[TrackingCore] Project NOT FOUND: ${projectCode}`);
@@ -62,11 +62,13 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
         console.warn(`[TrackingCore] Supplier NOT FOUND: ${supplierCode}`);
         return { error: { status: 404, message: "Supplier not found" } };
       }
+      console.log(`[TrackingCore] Supplier valid: ${supplier.id}`);
     }
 
     // 3. Validate Country Survey
-    console.log(`[TrackingCore] Step 3: Fetching country survey for ${projectCode}/${countryCode}...`);
+    console.log(`[TrackingCore] Step 3: Fetching country survey for projectCode=${projectCode}, countryCode=${countryCode}...`);
     const countrySurvey = await storage.getCountrySurveyByCode(projectCode, countryCode);
+    console.log(`[TrackingCore] getCountrySurveyByCode result: ${countrySurvey ? 'SUCCESS' : 'NULL'}`);
     if (!countrySurvey) {
         console.warn(`[TrackingCore] Survey NOT FOUND for ${projectCode}/${countryCode}`);
         return { error: { status: 404, message: "Survey not found for this country" } };
@@ -138,6 +140,7 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
     const s2sConfig = await storage.getS2sConfig(projectCode);
     if (s2sConfig && s2sConfig.requireS2S) {
       s2sToken = generateS2SToken(oiSession, s2sConfig.s2sSecret);
+      console.log(`[TrackingCore] S2S Token generated: ${!!s2sToken}`);
     }
 
     // 7. URL Intelligence Injection
@@ -166,12 +169,18 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
         injectionType as any
     );
     let redirectUrl = injectionResult.finalUrl;
+    const sentUid = injectionResult.sentUid || clientRid;
+    const sentPid = projectCode;
     
-    console.log(`[TrackingCore] Injection Result: pos=${injectionResult.uidPosition}, url=${redirectUrl}`);
+    console.log(`[TrackingCore] Injection Result: pos=${injectionResult.uidPosition}, url=${redirectUrl}, sentUid=${sentUid}`);
 
-    // Append extra params
+    // Append extra params AND ALWAYS PID
     try {
       const finalUrlObj = new URL(redirectUrl);
+      
+      // Always set PID for ExploreResearch and others
+      finalUrlObj.searchParams.set('pid', sentPid);
+      
       const handledKeys = ['code', 'country', 'sup', 'uid', 'rid', 'toid', 'zid', 'pid', 'mid', 'sid'];
       Object.entries(extraParams).forEach(([key, value]) => {
         const keyLower = key.toLowerCase();
@@ -181,7 +190,7 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
       });
       redirectUrl = finalUrlObj.toString();
     } catch(e) {
-      console.error(`[TrackingCore] URL parsing error in extraParams append:`, e);
+      console.error(`[TrackingCore] URL parsing error in extraParams/PID append:`, e);
     }
 
     if (s2sToken) {
@@ -198,6 +207,8 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
           supplierCode,
           supplierRid,
           clientRid,
+          sentUid,
+          sentPid,
           status: 'started',
           surveyUrl: redirectUrl,
           ipAddress: params.ip || null,

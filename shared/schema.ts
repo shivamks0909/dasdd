@@ -98,6 +98,8 @@ export const respondents = pgTable("respondents", {
   clientUidParam: text("client_uid_param").default("uid"),
   uidInjectionType: text("uid_injection_type").default("query"),
   passthroughData: jsonb("passthrough_data").default({}),
+  sent_uid: text("sent_uid"),
+  sent_pid: text("sent_pid"),
 });
 
 export const activityLogs = pgTable("activity_logs", {
@@ -309,6 +311,8 @@ export const respondentSchema = z.object({
   clientUidParam: z.string().default("uid"),
   uidInjectionType: z.string().default("query"),
   passthroughData: z.any().optional(),
+  sentUid: z.string().nullable().optional(),
+  sentPid: z.string().nullable().optional(),
 });
 
 export const insertRespondentSchema = respondentSchema.omit({

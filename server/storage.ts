@@ -58,6 +58,7 @@ export interface IStorage {
   checkDuplicateRespondent(projectCode: string, supplierCode: string, supplierRid: string): Promise<boolean>;
   getRespondents(): Promise<Respondent[]>;
   getRespondentsByProject(projectCode: string): Promise<Respondent[]>;
+  getRespondentBySentUid(sentPid: string, sentUid: string): Promise<Respondent | undefined>;
 
   // Activity Logs
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
@@ -163,7 +164,11 @@ const mapProject = (data: any): Project => ({
   completeUrl: data.complete_url,
   terminateUrl: data.terminate_url,
   quotafullUrl: data.quotafull_url,
-  securityUrl: data.security_url
+  securityUrl: data.security_url,
+  clientUidParam: data.client_uid_param,
+  forcePidAsUid: data.force_pid_as_uid,
+  uidInjectionType: data.uid_injection_type,
+  uidParams: data.uid_params,
 });
 
 const mapCountrySurvey = (data: any): CountrySurvey => ({
@@ -217,7 +222,9 @@ const mapRespondent = (data: any): Respondent => ({
   redirectStatus: data.redirect_status,
   urlUidPosition: data.url_uid_position,
   urlUidValue: data.url_uid_value,
-  clickid: data.clickid
+  clickid: data.clickid,
+  sentUid: data.sent_uid,
+  sentPid: data.sent_pid
 });
 
 const mapSupplierUser = (data: any): SupplierUser => ({
@@ -372,14 +379,21 @@ export class DatabaseStorage implements IStorage {
   }
   async getCountrySurveyByCode(projectCode: string, countryCode: string): Promise<CountrySurvey | undefined> {
     console.log(`[Storage] getCountrySurveyByCode starting for: "${projectCode}" / "${countryCode}"`);
-    const { data } = await insforge.database
+    const { data, error } = await insforge.database
       .from("country_surveys")
       .select("*")
       .ilike("project_code", projectCode)
       .eq("country_code", countryCode)
-      .maybeSingle();
-    
-    return data ? mapCountrySurvey(data) : undefined;
+      .eq("status", "active")
+      .limit(1);
+
+    if (error) {
+      console.error(`[Storage] getCountrySurveyByCode error:`, error);
+      return undefined;
+    }
+
+    const surveyData = data && data.length > 0 ? data[0] : null;
+    return surveyData ? mapCountrySurvey(surveyData) : undefined;
   }
 
   async createCountrySurvey(survey: InsertCountrySurvey): Promise<CountrySurvey> {
@@ -416,7 +430,7 @@ export class DatabaseStorage implements IStorage {
 
   async getSupplierByCode(code: string): Promise<Supplier | undefined> {
     const { data } = await insforge.database.from("suppliers").select("*").eq("code", code).maybeSingle();
-    
+
     if (!data && (code === "VIRTUAL_SUP" || code === "TEST_SUP")) {
       console.log(`[Storage] Providing virtual supplier for ${code}`);
       return {
@@ -499,6 +513,8 @@ export class DatabaseStorage implements IStorage {
       is_fake_suspected: respondent.isFakeSuspected || false,
       fake_reason: respondent.fakeReason || null,
       redirect_status: respondent.redirectStatus || null,
+      sent_uid: respondent.sentUid || null,
+      sent_pid: respondent.sentPid || null,
       // clickid: respondent.clickid || null,
       // client_uid_param: respondent.clientUidParam || 'uid',
       // uid_injection_type: respondent.uid_injection_type || 'query',
@@ -529,6 +545,18 @@ export class DatabaseStorage implements IStorage {
     return data ? mapRespondent(data) : undefined;
   }
 
+  async getRespondentBySentUid(sentPid: string, sentUid: string): Promise<Respondent | undefined> {
+    console.log(`[Storage] getRespondentBySentUid: pid=${sentPid}, uid=${sentUid}`);
+    const { data } = await insforge.database.from("respondents")
+      .select("*")
+      .eq("sent_pid", sentPid)
+      .eq("sent_uid", sentUid)
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data ? mapRespondent(data) : undefined;
+  }
+
   async getRespondentBySupplierRid(projectCode: string, supplierRid: string): Promise<Respondent | undefined> {
     const { data } = await insforge.database.from("respondents")
       .select("*")
@@ -540,958 +568,958 @@ export class DatabaseStorage implements IStorage {
     return data ? mapRespondent(data) : undefined;
   }
 
-  async updateRespondentStatus(oiSession: string, status: string, redirectUrl?: string): Promise<Respondent | undefined> {
-    const updateData: any = { 
-      status, 
-      completed_at: status !== 'started' ? new Date() : null 
-    };
-    if (redirectUrl) {
-      updateData.redirect_url = redirectUrl;
-    }
+  async updateRespondentStatus(oiSession: string, status: string, redirectUrl ?: string): Promise < Respondent | undefined > {
+      const updateData: any = {
+        status,
+        completed_at: status !== 'started' ? new Date() : null
+      };
+      if(redirectUrl) {
+        updateData.redirect_url = redirectUrl;
+      }
 
     const { data } = await insforge.database.from("respondents")
-      .update(updateData)
-      .eq("oi_session", oiSession)
-      .select("*, extra_params")
-      .maybeSingle();
-    
-    console.log(`[Storage] Updated respondent ${oiSession}, data keys:`, Object.keys(data || {}));
-    console.log(`[Storage] data.extra_params (raw):`, data?.extra_params);
-    return data ? mapRespondent(data) : undefined;
-  }
+        .update(updateData)
+        .eq("oi_session", oiSession)
+        .select("*, extra_params")
+        .maybeSingle();
 
-  async checkDuplicateRespondent(projectCode: string, supplierCode: string, supplierRid: string): Promise<boolean> {
-    console.log(`[Storage] checkDuplicateRespondent START: project=${projectCode}, sup=${supplierCode}, rid=${supplierRid}`);
-    
-    try {
-      const { count: exactCount, error: exactError } = await insforge.database.from("respondents")
-        .select("*", { count: 'exact', head: true })
-        .eq("project_code", projectCode)
-        .eq("supplier_code", supplierCode)
-        .eq("supplier_rid", supplierRid);
-
-      if (exactError) console.error(`[Storage] checkDuplicateRespondent exactError:`, exactError.message);
-
-      const { count: upperCount, error: upperError } = await insforge.database.from("respondents")
-        .select("*", { count: 'exact', head: true })
-        .eq("project_code", projectCode)
-        .eq("supplier_code", supplierCode)
-        .ilike("supplier_rid", supplierRid);
-      
-      if (upperError) console.error(`[Storage] checkDuplicateRespondent upperError:`, upperError.message);
-
-      console.log(`[Storage] checkDuplicateRespondent results: exact=${exactCount}, upper=${upperCount}`);
-      return (exactCount || 0) > 0 || (upperCount || 0) > 0;
-    } catch (e: any) {
-      console.error(`[Storage] checkDuplicateRespondent FATAL EXCEPTION:`, e.message);
-      return false; // Safely allow if DB is failing
+      console.log(`[Storage] Updated respondent ${oiSession}, data keys:`, Object.keys(data || {}));
+      console.log(`[Storage] data.extra_params (raw):`, data?.extra_params);
+      return data ? mapRespondent(data) : undefined;
     }
-  }
 
-  async getRespondents(): Promise<Respondent[]> {
-    const { data } = await insforge.database.from("respondents").select("*").order("started_at", { ascending: false });
-    return (data || []).map(mapRespondent);
+  async checkDuplicateRespondent(projectCode: string, supplierCode: string, supplierRid: string): Promise < boolean > {
+      console.log(`[Storage] checkDuplicateRespondent START: project=${projectCode}, sup=${supplierCode}, rid=${supplierRid}`);
+
+      try {
+        const { count: exactCount, error: exactError } = await insforge.database.from("respondents")
+          .select("*", { count: 'exact', head: true })
+          .eq("project_code", projectCode)
+          .eq("supplier_code", supplierCode)
+          .eq("supplier_rid", supplierRid);
+
+        if(exactError) console.error(`[Storage] checkDuplicateRespondent exactError:`, exactError.message);
+
+        const { count: upperCount, error: upperError } = await insforge.database.from("respondents")
+          .select("*", { count: 'exact', head: true })
+          .eq("project_code", projectCode)
+          .eq("supplier_code", supplierCode)
+          .ilike("supplier_rid", supplierRid);
+
+        if(upperError) console.error(`[Storage] checkDuplicateRespondent upperError:`, upperError.message);
+
+        console.log(`[Storage] checkDuplicateRespondent results: exact=${exactCount}, upper=${upperCount}`);
+        return(exactCount || 0) > 0 || (upperCount || 0) > 0;
+  } catch(e: any) {
+    console.error(`[Storage] checkDuplicateRespondent FATAL EXCEPTION:`, e.message);
+    return false; // Safely allow if DB is failing
+  }
+}
+
+  async getRespondents(): Promise < Respondent[] > {
+  const { data } = await insforge.database.from("respondents").select("*").order("started_at", { ascending: false });
+  return(data || []).map(mapRespondent);
   }
 
   private static responsesCache: {
-    data: any[];
-    timestamp: number;
-    limit: number;
-  } | null = null;
+  data: any[];
+  timestamp: number;
+  limit: number;
+} | null = null;
 
-  async getEnrichedRespondents(limit = 100): Promise<any[]> {
-    const CACHE_TTL = 10000; // 10 seconds
-    const now = Date.now();
+  async getEnrichedRespondents(limit = 100): Promise < any[] > {
+  const CACHE_TTL = 10000; // 10 seconds
+  const now = Date.now();
 
-    if (DatabaseStorage.responsesCache && (now - DatabaseStorage.responsesCache.timestamp < CACHE_TTL) && limit <= DatabaseStorage.responsesCache.limit) {
-      return DatabaseStorage.responsesCache.data.slice(0, limit);
-    }
+  if(DatabaseStorage.responsesCache && (now - DatabaseStorage.responsesCache.timestamp < CACHE_TTL) && limit <= DatabaseStorage.responsesCache.limit) {
+  return DatabaseStorage.responsesCache.data.slice(0, limit);
+}
 
-    const { data: respondents } = await insforge.database.from("respondents")
-      .select("*")
-      .order("started_at", { ascending: false })
-      .limit(limit);
-    
-    if (!respondents) return [];
+const { data: respondents } = await insforge.database.from("respondents")
+  .select("*")
+  .order("started_at", { ascending: false })
+  .limit(limit);
 
-    const { data: suppliers } = await insforge.database.from("suppliers").select("id, name, code");
-    const supplierMap = new Map((suppliers || []).map(s => [s.code, s.name]));
+if (!respondents) return [];
 
-    const { data: projects } = await insforge.database.from("projects").select("project_code, project_name");
-    const projectMap = new Map((projects || []).map(p => [p.project_code, p.project_name]));
+const { data: suppliers } = await insforge.database.from("suppliers").select("id, name, code");
+const supplierMap = new Map((suppliers || []).map(s => [s.code, s.name]));
 
-    const enriched = respondents.map(r => ({
-      ...mapRespondent(r),
-      supplierName: r.supplier_code ? supplierMap.get(r.supplier_code) || "Direct Traffic" : "Direct Traffic",
-      projectName: projectMap.get(r.project_code) || r.project_code
-    }));
+const { data: projects } = await insforge.database.from("projects").select("project_code, project_name");
+const projectMap = new Map((projects || []).map(p => [p.project_code, p.project_name]));
 
-    DatabaseStorage.responsesCache = {
-      data: enriched,
-      timestamp: now,
-      limit
-    };
+const enriched = respondents.map(r => ({
+  ...mapRespondent(r),
+  supplierName: r.supplier_code ? supplierMap.get(r.supplier_code) || "Direct Traffic" : "Direct Traffic",
+  projectName: projectMap.get(r.project_code) || r.project_code
+}));
 
-    return enriched;
+DatabaseStorage.responsesCache = {
+  data: enriched,
+  timestamp: now,
+  limit
+};
+
+return enriched;
   }
 
-  async getRespondentsByProject(projectCode: string): Promise<Respondent[]> {
-    const { data } = await insforge.database.from("respondents")
-      .select("*")
-      .eq("project_code", projectCode)
-      .order("started_at", { ascending: false });
-    return (data || []).map(mapRespondent);
+  async getRespondentsByProject(projectCode: string): Promise < Respondent[] > {
+  const { data } = await insforge.database.from("respondents")
+    .select("*")
+    .eq("project_code", projectCode)
+    .order("started_at", { ascending: false });
+  return(data || []).map(mapRespondent);
   }
 
   // Activity Logs
-  async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {
-    const dbLog: any = {
-      oi_session: log.oiSession,
-      event_type: log.eventType,
-      meta: log.meta || null
-    };
-    if (log.projectCode) {
-      dbLog.project_code = log.projectCode;
-    }
-    const { data } = await insforge.database.from("activity_logs").insert([dbLog]).select().single();
-    if (!data) throw new Error("Failed to create activity log");
-    return data;
+  async createActivityLog(log: InsertActivityLog): Promise < ActivityLog > {
+  const dbLog: any = {
+    oi_session: log.oiSession,
+    event_type: log.eventType,
+    meta: log.meta || null
+  };
+  if(log.projectCode) {
+  dbLog.project_code = log.projectCode;
+}
+const { data } = await insforge.database.from("activity_logs").insert([dbLog]).select().single();
+if (!data) throw new Error("Failed to create activity log");
+return data;
   }
 
-  async getActivityLogs(oiSession: string): Promise<ActivityLog[]> {
-    const { data } = await insforge.database.from("activity_logs").select("*").eq("oi_session", oiSession).order("created_at", { ascending: false });
-    return data || [];
-  }
+  async getActivityLogs(oiSession: string): Promise < ActivityLog[] > {
+  const { data } = await insforge.database.from("activity_logs").select("*").eq("oi_session", oiSession).order("created_at", { ascending: false });
+  return data || [];
+}
 
   private static dashboardCache: {
-    data: DashboardStats;
-    timestamp: number;
-  } | null = null;
+  data: DashboardStats;
+  timestamp: number;
+} | null = null;
 
-  async getDashboardStats(): Promise<DashboardStats> {
-    const CACHE_TTL = 30000; // 30 seconds
-    const now = Date.now();
+  async getDashboardStats(): Promise < DashboardStats > {
+  const CACHE_TTL = 30000; // 30 seconds
+  const now = Date.now();
 
-    if (DatabaseStorage.dashboardCache && (now - DatabaseStorage.dashboardCache.timestamp < CACHE_TTL)) {
-      return DatabaseStorage.dashboardCache.data;
+  if(DatabaseStorage.dashboardCache && (now - DatabaseStorage.dashboardCache.timestamp < CACHE_TTL)) {
+  return DatabaseStorage.dashboardCache.data;
+}
+
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const todayStr = today.toISOString();
+const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+
+// Parallelize all independent count queries
+const [
+  { count: totalProjects },
+  { count: activeProjects },
+  { count: totalRespondents },
+  { count: completes },
+  { count: terminates },
+  { count: quotafulls },
+  { count: securityTerminates },
+  { count: clicksToday },
+  { count: completesToday },
+  { count: quotafullToday },
+  { count: terminatesToday },
+  { count: securityToday },
+  { count: duplicatesToday },
+  { count: inProgressToday },
+  { data: recentActivity }
+] = await Promise.all([
+  insforge.database.from("projects").select("*", { count: 'exact', head: true }),
+  insforge.database.from("projects").select("*", { count: 'exact', head: true }).eq("status", "active"),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["complete", "completed"]),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["terminate", "terminated", "disqualified"]),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["quotafull", "quota_full"]),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["security-terminate", "security", "fraud"]),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }).gte("started_at", todayStr),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["complete", "completed"]).gte("started_at", todayStr),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["quotafull", "quota_full"]).gte("started_at", todayStr),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["terminate", "terminated", "disqualified"]).gte("started_at", todayStr),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["security-terminate", "security", "fraud"]).gte("started_at", todayStr),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "duplicate").gte("started_at", todayStr),
+  insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "started").gte("started_at", todayStr),
+  insforge.database.from("respondents").select("started_at").gte("started_at", oneDayAgo)
+]);
+
+const irPercent = totalRespondents && totalRespondents > 0
+  ? ((completes || 0) / totalRespondents * 100).toFixed(1)
+  : "0.0";
+
+const conversionRateToday = clicksToday && clicksToday > 0
+  ? ((completesToday || 0) / clicksToday * 100).toFixed(1) + "%"
+  : "0%";
+
+const hourlyData = new Array(24).fill(0);
+const nowHour = new Date().getHours();
+
+if (recentActivity) {
+  recentActivity.forEach((r: any) => {
+    if (!r.started_at) return;
+    const hour = new Date(r.started_at).getHours();
+    let diff = nowHour - hour;
+    if (diff < 0) diff += 24;
+    const index = 23 - diff;
+    if (index >= 0 && index < 24) {
+      hourlyData[index]++;
     }
+  });
+}
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString();
-    const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+const activityData = hourlyData.map((count, i) => {
+  const h = new Date();
+  h.setHours(nowHour - (23 - i));
+  return {
+    name: h.toLocaleTimeString([], { hour: '2-digit' }),
+    value: count,
+    date: h.toISOString(),
+    count
+  };
+});
 
-    // Parallelize all independent count queries
-    const [
-      { count: totalProjects },
-      { count: activeProjects },
-      { count: totalRespondents },
-      { count: completes },
-      { count: terminates },
-      { count: quotafulls },
-      { count: securityTerminates },
-      { count: clicksToday },
-      { count: completesToday },
-      { count: quotafullToday },
-      { count: terminatesToday },
-      { count: securityToday },
-      { count: duplicatesToday },
-      { count: inProgressToday },
-      { data: recentActivity }
-    ] = await Promise.all([
-      insforge.database.from("projects").select("*", { count: 'exact', head: true }),
-      insforge.database.from("projects").select("*", { count: 'exact', head: true }).eq("status", "active"),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["complete", "completed"]),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["terminate", "terminated", "disqualified"]),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["quotafull", "quota_full"]),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["security-terminate", "security", "fraud"]),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).gte("started_at", todayStr),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["complete", "completed"]).gte("started_at", todayStr),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["quotafull", "quota_full"]).gte("started_at", todayStr),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["terminate", "terminated", "disqualified"]).gte("started_at", todayStr),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).in("status", ["security-terminate", "security", "fraud"]).gte("started_at", todayStr),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "duplicate").gte("started_at", todayStr),
-      insforge.database.from("respondents").select("*", { count: 'exact', head: true }).eq("status", "started").gte("started_at", todayStr),
-      insforge.database.from("respondents").select("started_at").gte("started_at", oneDayAgo)
-    ]);
+const stats: DashboardStats = {
+  totalProjects: totalProjects || 0,
+  activeProjects: activeProjects || 0,
+  totalRespondents: totalRespondents || 0,
+  completes: completes || 0,
+  terminates: terminates || 0,
+  quotafulls: quotafulls || 0,
+  securityTerminates: securityTerminates || 0,
 
-    const irPercent = totalRespondents && totalRespondents > 0
-      ? ((completes || 0) / totalRespondents * 100).toFixed(1)
-      : "0.0";
+  clicksToday: clicksToday || 0,
+  completesToday: completesToday || 0,
+  quotafullToday: quotafullToday || 0,
+  terminatesToday: terminatesToday || 0,
+  inProgressToday: inProgressToday || 0,
+  duplicatesToday: duplicatesToday || 0,
+  securityToday: securityToday || 0,
+  conversionRateToday,
 
-    const conversionRateToday = clicksToday && clicksToday > 0 
-      ? ((completesToday || 0) / clicksToday * 100).toFixed(1) + "%"
-      : "0%";
+  activityData,
+};
 
-    const hourlyData = new Array(24).fill(0);
-    const nowHour = new Date().getHours();
-    
-    if (recentActivity) {
-      recentActivity.forEach((r: any) => {
-        if (!r.started_at) return;
-        const hour = new Date(r.started_at).getHours();
-        let diff = nowHour - hour;
-        if (diff < 0) diff += 24;
-        const index = 23 - diff;
-        if (index >= 0 && index < 24) {
-          hourlyData[index]++;
-        }
-      });
-    }
+DatabaseStorage.dashboardCache = {
+  data: stats,
+  timestamp: now
+};
 
-    const activityData = hourlyData.map((count, i) => {
-      const h = new Date();
-      h.setHours(nowHour - (23 - i));
-      return {
-        name: h.toLocaleTimeString([], { hour: '2-digit' }),
-        value: count,
-        date: h.toISOString(),
-        count
-      };
-    });
-
-    const stats: DashboardStats = {
-      totalProjects: totalProjects || 0,
-      activeProjects: activeProjects || 0,
-      totalRespondents: totalRespondents || 0,
-      completes: completes || 0,
-      terminates: terminates || 0,
-      quotafulls: quotafulls || 0,
-      securityTerminates: securityTerminates || 0,
-      
-      clicksToday: clicksToday || 0,
-      completesToday: completesToday || 0,
-      quotafullToday: quotafullToday || 0,
-      terminatesToday: terminatesToday || 0,
-      inProgressToday: inProgressToday || 0,
-      duplicatesToday: duplicatesToday || 0,
-      securityToday: securityToday || 0,
-      conversionRateToday,
-      
-      activityData,
-    };
-
-    DatabaseStorage.dashboardCache = {
-      data: stats,
-      timestamp: now
-    };
-
-    return stats;
+return stats;
   }
 
   async getSystemPulseStats() {
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: last24h } = await insforge.database.from("respondents").select("*").gte("started_at", oneDayAgo);
-    
-    const activity = (last24h || []).map(mapRespondent);
-    return {
-      totalVolume: activity.length,
-      successChain: activity.filter(r => (r.status === 'complete' || r.status === 'completed') && r.s2sVerified).length,
-      filteredOut: activity.filter(r => ['terminate', 'terminated', 'quotafull', 'quota_full', 'disqualified'].includes(r.status || '')).length,
-      securityAlerts: activity.filter(r => ['security-terminate', 'security', 'fraud'].includes(r.status || '')).length,
-      ratePerMinute: 0,
-      recentActivity: activity.slice(0, 20)
-    };
-  }
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: last24h } = await insforge.database.from("respondents").select("*").gte("started_at", oneDayAgo);
+
+  const activity = (last24h || []).map(mapRespondent);
+  return {
+    totalVolume: activity.length,
+    successChain: activity.filter(r => (r.status === 'complete' || r.status === 'completed') && r.s2sVerified).length,
+    filteredOut: activity.filter(r => ['terminate', 'terminated', 'quotafull', 'quota_full', 'disqualified'].includes(r.status || '')).length,
+    securityAlerts: activity.filter(r => ['security-terminate', 'security', 'fraud'].includes(r.status || '')).length,
+    ratePerMinute: 0,
+    recentActivity: activity.slice(0, 20)
+  };
+}
 
   // Clients
-  async getClients(): Promise<Client[]> {
-    const { data } = await insforge.database.from("clients").select("*").order("created_at", { ascending: false });
-    return data || [];
-  }
+  async getClients(): Promise < Client[] > {
+  const { data } = await insforge.database.from("clients").select("*").order("created_at", { ascending: false });
+  return data || [];
+}
 
-  async createClient(client: InsertClient): Promise<Client> {
-    const { data } = await insforge.database.from("clients").insert([{ ...client }]).select().single();
-    if (!data) throw new Error("Failed to create client");
-    return data;
-  }
+  async createClient(client: InsertClient): Promise < Client > {
+  const { data } = await insforge.database.from("clients").insert([{ ...client }]).select().single();
+  if(!data) throw new Error("Failed to create client");
+  return data;
+}
 
-  async updateClient(id: string, client: Partial<InsertClient>): Promise<Client | undefined> {
-    const { data } = await insforge.database.from("clients").update(client).eq("id", id).select().single();
-    return data || undefined;
-  }
+  async updateClient(id: string, client: Partial<InsertClient>): Promise < Client | undefined > {
+  const { data } = await insforge.database.from("clients").update(client).eq("id", id).select().single();
+  return data || undefined;
+}
 
-  async deleteClient(id: string): Promise<void> {
-    await insforge.database.from("clients").delete().eq("id", id);
-  }
+  async deleteClient(id: string): Promise < void> {
+  await insforge.database.from("clients").delete().eq("id", id);
+}
 
   // Supplier Assignments
-  async getSupplierAssignments(projectCode?: string, supplierId?: string): Promise<any[]> {
-    let query = insforge.database.from("supplier_assignments").select(`
+  async getSupplierAssignments(projectCode ?: string, supplierId ?: string): Promise < any[] > {
+  let query = insforge.database.from("supplier_assignments").select(`
       *,
       suppliers!inner(name, code),
       projects!inner(project_name)
     `);
 
-    if (projectCode) query = query.eq("project_code", projectCode);
-    if (supplierId) query = query.eq("supplier_id", supplierId);
+  if(projectCode) query = query.eq("project_code", projectCode);
+  if(supplierId) query = query.eq("supplier_id", supplierId);
 
-    const { data } = await query.order("created_at", { ascending: false });
-    
-    return (data || []).map(a => ({
-      ...a,
-      projectCode: a.project_code,
-      countryCode: a.country_code,
-      supplierId: a.supplier_id,
-      completeUrl: a.complete_url,
-      terminateUrl: a.terminate_url,
-      quotafull_url: a.quotafull_url,
-      security_url: a.security_url,
-      supplierName: a.suppliers?.name,
-      supplierCode: a.suppliers?.code,
-      projectName: a.projects?.project_name
-    }));
+  const { data } = await query.order("created_at", { ascending: false });
+
+  return(data || []).map(a => ({
+    ...a,
+    projectCode: a.project_code,
+    countryCode: a.country_code,
+    supplierId: a.supplier_id,
+    completeUrl: a.complete_url,
+    terminateUrl: a.terminate_url,
+    quotafull_url: a.quotafull_url,
+    security_url: a.security_url,
+    supplierName: a.suppliers?.name,
+    supplierCode: a.suppliers?.code,
+    projectName: a.projects?.project_name
+  }));
   }
 
-  async createSupplierAssignment(assignment: InsertSupplierAssignment): Promise<SupplierAssignment> {
-    const a = assignment as any;
-    const dbAssignment: any = {
-      project_code: a.projectCode,
-      country_code: a.countryCode,
-      supplier_id: a.supplierId || null,
-      generated_link: a.generatedLink,
-      status: a.status || 'active',
-      notes: a.notes || null,
-    };
-    const { data, error } = await insforge.database.from("supplier_assignments").insert([dbAssignment]).select().single();
-    if (error) {
-      console.error("DB insert error for supplier_assignments:", error);
-      throw new Error(`Failed to create supplier assignment: ${error.message}`);
-    }
-    if (!data) throw new Error("Failed to create supplier assignment");
-    return data;
+  async createSupplierAssignment(assignment: InsertSupplierAssignment): Promise < SupplierAssignment > {
+  const a = assignment as any;
+  const dbAssignment: any = {
+    project_code: a.projectCode,
+    country_code: a.countryCode,
+    supplier_id: a.supplierId || null,
+    generated_link: a.generatedLink,
+    status: a.status || 'active',
+    notes: a.notes || null,
+  };
+  const { data, error } = await insforge.database.from("supplier_assignments").insert([dbAssignment]).select().single();
+  if(error) {
+    console.error("DB insert error for supplier_assignments:", error);
+    throw new Error(`Failed to create supplier assignment: ${error.message}`);
   }
+    if(!data) throw new Error("Failed to create supplier assignment");
+  return data;
+}
 
-  async updateSupplierAssignment(id: string, assignment: Partial<SupplierAssignment>): Promise<SupplierAssignment | undefined> {
-    const a = assignment as any;
-    const dbAssignment: any = {};
-    if (a.projectCode) dbAssignment.project_code = a.projectCode;
-    if (a.countryCode) dbAssignment.country_code = a.countryCode;
-    if (a.supplierId) dbAssignment.supplier_id = a.supplierId;
-    if (a.status) dbAssignment.status = a.status;
-    if (a.completeUrl !== undefined) dbAssignment.complete_url = a.completeUrl;
-    if (a.terminateUrl !== undefined) dbAssignment.terminate_url = a.terminateUrl;
-    if (a.quotafullUrl !== undefined) dbAssignment.quotafull_url = a.quotafullUrl;
-    if (a.securityUrl !== undefined) dbAssignment.security_url = a.securityUrl;
+  async updateSupplierAssignment(id: string, assignment: Partial<SupplierAssignment>): Promise < SupplierAssignment | undefined > {
+  const a = assignment as any;
+  const dbAssignment: any = {};
+  if(a.projectCode) dbAssignment.project_code = a.projectCode;
+  if(a.countryCode) dbAssignment.country_code = a.countryCode;
+  if(a.supplierId) dbAssignment.supplier_id = a.supplierId;
+  if(a.status) dbAssignment.status = a.status;
+  if(a.completeUrl !== undefined) dbAssignment.complete_url = a.completeUrl;
+  if(a.terminateUrl !== undefined) dbAssignment.terminate_url = a.terminateUrl;
+  if(a.quotafullUrl !== undefined) dbAssignment.quotafull_url = a.quotafullUrl;
+  if(a.securityUrl !== undefined) dbAssignment.security_url = a.securityUrl;
 
-    const { data: updated } = await insforge.database.from("supplier_assignments").update(dbAssignment).eq("id", id).select().single();
-    return updated || undefined;
-  }
+  const { data: updated } = await insforge.database.from("supplier_assignments").update(dbAssignment).eq("id", id).select().single();
+  return updated || undefined;
+}
 
-  async deleteSupplierAssignment(id: string): Promise<void> {
-    await insforge.database.from("supplier_assignments").delete().eq("id", id);
-  }
+  async deleteSupplierAssignment(id: string): Promise < void> {
+  await insforge.database.from("supplier_assignments").delete().eq("id", id);
+}
 
-  async getSupplierAssignmentByCombo(projectCode: string, countryCode: string, supplierId: string): Promise<SupplierAssignment | undefined> {
-    const { data } = await insforge.database.from("supplier_assignments")
-      .select("*")
-      .eq("project_code", projectCode)
-      .eq("country_code", countryCode)
-      .eq("supplier_id", supplierId)
-      .single();
-    return data || undefined;
-  }
+  async getSupplierAssignmentByCombo(projectCode: string, countryCode: string, supplierId: string): Promise < SupplierAssignment | undefined > {
+  const { data } = await insforge.database.from("supplier_assignments")
+    .select("*")
+    .eq("project_code", projectCode)
+    .eq("country_code", countryCode)
+    .eq("supplier_id", supplierId)
+    .single();
+  return data || undefined;
+}
 
   // S2S Config
-  async getS2sConfig(projectCode: string): Promise<ProjectS2sConfig | undefined> {
-    const { data } = await insforge.database.from("project_s2s_config").select("*").eq("project_code", projectCode).single();
-    return data || undefined;
-  }
+  async getS2sConfig(projectCode: string): Promise < ProjectS2sConfig | undefined > {
+  const { data } = await insforge.database.from("project_s2s_config").select("*").eq("project_code", projectCode).single();
+  return data || undefined;
+}
 
-  async createS2sConfig(config: InsertProjectS2sConfig): Promise<ProjectS2sConfig> {
-    const c = config as any;
-    const dbConfig: any = {
-      project_code: c.projectCode,
-      s2s_secret: c.s2sSecret,
-      require_s2s: c.requireS2S
-    };
-    if (c.s2sUrl) dbConfig.s2s_url = c.s2sUrl;
-    if (c.tokenParam) dbConfig.token_param = c.tokenParam;
-    if (c.statusParam) dbConfig.status_param = c.statusParam;
-    if (c.ridParam) dbConfig.rid_param = c.ridParam;
-    if (c.additionalParams) dbConfig.additional_params = c.additionalParams;
-    const { data } = await insforge.database.from("project_s2s_config").insert([dbConfig]).select().single();
-    if (!data) throw new Error("Failed to create S2S config");
-    return data;
-  }
+  async createS2sConfig(config: InsertProjectS2sConfig): Promise < ProjectS2sConfig > {
+  const c = config as any;
+  const dbConfig: any = {
+    project_code: c.projectCode,
+    s2s_secret: c.s2sSecret,
+    require_s2s: c.requireS2S
+  };
+  if(c.s2sUrl) dbConfig.s2s_url = c.s2sUrl;
+  if(c.tokenParam) dbConfig.token_param = c.tokenParam;
+  if(c.statusParam) dbConfig.status_param = c.statusParam;
+  if(c.ridParam) dbConfig.rid_param = c.ridParam;
+  if(c.additionalParams) dbConfig.additional_params = c.additionalParams;
+  const { data } = await insforge.database.from("project_s2s_config").insert([dbConfig]).select().single();
+  if(!data) throw new Error("Failed to create S2S config");
+  return data;
+}
 
-  async updateS2sConfig(projectCode: string, config: Partial<InsertProjectS2sConfig>): Promise<ProjectS2sConfig> {
-    const c = config as any;
-    const dbConfig: any = {};
-    if (c.s2sUrl !== undefined) dbConfig.s2s_url = c.s2sUrl;
-    if (c.tokenParam !== undefined) dbConfig.token_param = c.tokenParam;
-    if (c.statusParam !== undefined) dbConfig.status_param = c.statusParam;
-    if (c.ridParam !== undefined) dbConfig.rid_param = c.ridParam;
-    if (c.additionalParams !== undefined) dbConfig.additional_params = c.additionalParams;
-    if (c.s2sSecret !== undefined) dbConfig.s2s_secret = c.s2sSecret;
-    if (c.requireS2S !== undefined) dbConfig.require_s2s = c.requireS2S;
+  async updateS2sConfig(projectCode: string, config: Partial<InsertProjectS2sConfig>): Promise < ProjectS2sConfig > {
+  const c = config as any;
+  const dbConfig: any = {};
+  if(c.s2sUrl !== undefined) dbConfig.s2s_url = c.s2sUrl;
+  if(c.tokenParam !== undefined) dbConfig.token_param = c.tokenParam;
+  if(c.statusParam !== undefined) dbConfig.status_param = c.statusParam;
+  if(c.ridParam !== undefined) dbConfig.rid_param = c.ridParam;
+  if(c.additionalParams !== undefined) dbConfig.additional_params = c.additionalParams;
+  if(c.s2sSecret !== undefined) dbConfig.s2s_secret = c.s2sSecret;
+  if(c.requireS2S !== undefined) dbConfig.require_s2s = c.requireS2S;
 
-    const { data } = await insforge.database.from("project_s2s_config")
-      .update(dbConfig)
-      .eq("project_code", projectCode)
-      .select()
-      .single();
-    if (!data) throw new Error("Failed to update S2S config");
-    return data;
-  }
+  const { data } = await insforge.database.from("project_s2s_config")
+    .update(dbConfig)
+    .eq("project_code", projectCode)
+    .select()
+    .single();
+  if(!data) throw new Error("Failed to update S2S config");
+  return data;
+}
 
   // S2S Logs
-  async createS2sLog(log: InsertS2sLog): Promise<S2sLog> {
-    const l = log as any;
-    const dbLog: any = {
-      project_code: l.projectCode,
-      oi_session: l.oiSession,
-      status: l.status,
-      payload: l.payload,
-      supplier_code: l.supplierCode,
-      ip_address: l.ipAddress,
-      user_agent: l.userAgent
-    };
-    if (l.endpoint) dbLog.endpoint = l.endpoint;
-    if (l.response) dbLog.response = l.response;
-    if (l.statusCode) dbLog.status_code = l.statusCode;
-    if (l.success !== undefined) dbLog.success = l.success;
-    const { data } = await insforge.database.from("s2s_logs").insert([dbLog]).select().single();
-    if (!data) throw new Error("Failed to create S2S log");
-    return data;
-  }
+  async createS2sLog(log: InsertS2sLog): Promise < S2sLog > {
+  const l = log as any;
+  const dbLog: any = {
+    project_code: l.projectCode,
+    oi_session: l.oiSession,
+    status: l.status,
+    payload: l.payload,
+    supplier_code: l.supplierCode,
+    ip_address: l.ipAddress,
+    user_agent: l.userAgent
+  };
+  if(l.endpoint) dbLog.endpoint = l.endpoint;
+  if(l.response) dbLog.response = l.response;
+  if(l.statusCode) dbLog.status_code = l.statusCode;
+  if(l.success !== undefined) dbLog.success = l.success;
+  const { data } = await insforge.database.from("s2s_logs").insert([dbLog]).select().single();
+  if(!data) throw new Error("Failed to create S2S log");
+  return data;
+}
 
-  async getS2sLogs(projectCode: string): Promise<S2sLog[]> {
-    const { data } = await insforge.database.from("s2s_logs")
-      .select("*")
-      .eq("project_code", projectCode)
-      .order("created_at", { ascending: false })
-      .limit(100);
-    return data || [];
-  }
+  async getS2sLogs(projectCode: string): Promise < S2sLog[] > {
+  const { data } = await insforge.database.from("s2s_logs")
+    .select("*")
+    .eq("project_code", projectCode)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  return data || [];
+}
 
   // Security Alerts
-  async getSecurityAlerts(): Promise<ActivityLog[]> {
-    const { data } = await insforge.database.from("activity_logs")
-      .select("*")
-      .eq("event_type", "security_alert")
-      .order("created_at", { ascending: false })
-      .limit(50);
-    return data || [];
-  }
+  async getSecurityAlerts(): Promise < ActivityLog[] > {
+  const { data } = await insforge.database.from("activity_logs")
+    .select("*")
+    .eq("event_type", "security_alert")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  return data || [];
+}
 
   // Additional Respondent Logic
-  async verifyS2sRespondent(oiSession: string, status: string): Promise<void> {
-    await insforge.database.from("respondents")
-      .update({ s2s_verified: true, status: status || 'complete', completed_at: new Date() })
-      .eq("oi_session", oiSession);
-  }
+  async verifyS2sRespondent(oiSession: string, status: string): Promise < void> {
+  await insforge.database.from("respondents")
+    .update({ s2s_verified: true, status: status || 'complete', completed_at: new Date() })
+    .eq("oi_session", oiSession);
+}
 
   // Export methods
-  async getExportData(projectIds?: string[], status?: string): Promise<any[]> {
-    let query = insforge.database.from("respondents").select("*");
+  async getExportData(projectIds ?: string[], status ?: string): Promise < any[] > {
+  let query = insforge.database.from("respondents").select("*");
 
-    if (projectIds && projectIds.length > 0) {
-      query = query.in("project_code", projectIds);
-    }
-    if (status) {
-      query = query.eq("status", status);
-    }
+  if(projectIds && projectIds.length > 0) {
+  query = query.in("project_code", projectIds);
+}
+if (status) {
+  query = query.eq("status", status);
+}
 
-    const { data } = await query.order("started_at", { ascending: false });
-    const respondents = (data || []).map(mapRespondent);
+const { data } = await query.order("started_at", { ascending: false });
+const respondents = (data || []).map(mapRespondent);
 
-    // Get projects and suppliers to join names
-    const projects = await this.getProjects();
-    const suppliers = await this.getSuppliers();
+// Get projects and suppliers to join names
+const projects = await this.getProjects();
+const suppliers = await this.getSuppliers();
 
-    const projectMap = new Map(projects.map(p => [p.projectCode, p.projectName]));
-    const supplierMap = new Map(suppliers.map(s => [s.code, s.name]));
+const projectMap = new Map(projects.map(p => [p.projectCode, p.projectName]));
+const supplierMap = new Map(suppliers.map(s => [s.code, s.name]));
 
+return respondents.map(r => ({
+  id: r.id,
+  oiSession: r.oiSession,
+  projectCode: r.projectCode,
+  projectName: projectMap.get(r.projectCode) || "",
+  countryCode: r.countryCode,
+  supplierCode: r.supplierCode,
+  supplierName: supplierMap.get(r.supplierCode || "") || "",
+  supplierRid: r.supplierRid,
+  clientRid: r.clientRid,
+  status: r.status,
+  ipAddress: r.ipAddress,
+  userAgent: r.userAgent,
+  startedAt: r.startedAt,
+  completedAt: r.completedAt,
+  fraudScore: r.fraudScore
+}));
+  }
+
+  async getSupplierAssignmentsForExport(supplierId: string): Promise < any[] > {
+  const { data } = await insforge.database.from("supplier_assignments")
+    .select("*")
+    .eq("supplier_id", supplierId)
+    .order("created_at", { ascending: false });
+
+  const assignments = data || [];
+  const projects = await this.getProjects();
+  const projectMap = new Map(projects.map(p => [p.projectCode, p]));
+
+  return assignments.map(a => {
+    const p = projectMap.get(a.project_code);
+    return {
+      projectId: a.project_code,
+      projectName: p?.projectName || "",
+      clientId: p?.client || "",
+      totalTarget: 0,
+      completes: 0,
+      status: a.status,
+      cpa: 0,
+      revenue: 0
+    };
+  });
+}
+
+  // Supplier Portal Implementation
+  async getSupplierUserByUsername(username: string): Promise < SupplierUser | undefined > {
+  const { data } = await insforge.database.from("supplier_users").select("*").eq("username", username).maybeSingle();
+  return data ? mapSupplierUser(data) : undefined;
+}
+
+  async getSupplierUserById(id: string): Promise < SupplierUser | undefined > {
+  const { data } = await insforge.database.from("supplier_users").select("*").eq("id", id).maybeSingle();
+  return data ? mapSupplierUser(data) : undefined;
+}
+
+  async getSupplierProjectAccess(userId: string): Promise < SupplierProjectAccess[] > {
+  const { data } = await insforge.database.from("supplier_project_access").select("*").eq("user_id", userId);
+  return(data || []).map(mapSupplierProjectAccess);
+  }
+
+  async getAssignedProjects(userId: string): Promise < Project[] > {
+  // Join project access with projects table
+  const access = await this.getSupplierProjectAccess(userId);
+  if(access.length === 0) return [];
+
+  const projectIds = access.map(a => a.projectId);
+  const { data } = await insforge.database.from("projects").select("*").in("id", projectIds);
+  return(data || []).map(mapProject);
+  }
+
+  async createSupplierUser(user: InsertSupplierUser): Promise < SupplierUser > {
+  const dbUser = {
+    username: user.username,
+    password_hash: user.passwordHash,
+    supplier_id: user.supplierId,
+    supplier_code: user.supplierCode,
+    is_active: user.isActive,
+    created_by: user.createdBy
+  };
+  const { data, error } = await insforge.database.from("supplier_users").insert([dbUser]).select().single();
+  if(error) {
+    console.error("Supabase Error on Create Supplier User:", error);
+    throw new Error(`Failed to create supplier user: ${JSON.stringify(error)}`);
+  }
+    if(!data) throw new Error("Failed to create supplier user: No data");
+  return mapSupplierUser(data);
+}
+
+  async updateSupplierUser(id: string, user: Partial<InsertSupplierUser>): Promise < SupplierUser | undefined > {
+  const dbUser: any = {};
+  if(user.username) dbUser.username = user.username;
+  if(user.passwordHash) dbUser.password_hash = user.passwordHash;
+  if(user.supplierId) dbUser.supplier_id = user.supplierId;
+  if(user.supplierCode) dbUser.supplier_code = user.supplierCode;
+  if(user.isActive !== undefined) dbUser.is_active = user.isActive;
+  if((user as any).lastLogin) dbUser.last_login = (user as any).lastLogin;
+
+const { data } = await insforge.database.from("supplier_users").update(dbUser).eq("id", id).select().single();
+return data ? mapSupplierUser(data) : undefined;
+  }
+
+  async getSupplierDashboardStats(userId: string, supplierCode: string): Promise < DashboardStats > {
+  const assignedProjects = await this.getAssignedProjects(userId);
+  const projectCodes = assignedProjects.map(p => p.projectCode);
+
+  if(projectCodes.length === 0) {
+  return {
+    totalProjects: 0,
+    activeProjects: 0,
+    totalRespondents: 0,
+    completes: 0,
+    terminates: 0,
+    quotafulls: 0,
+    securityTerminates: 0,
+    clicksToday: 0,
+    completesToday: 0,
+    quotafullToday: 0,
+    terminatesToday: 0,
+    inProgressToday: 0,
+    duplicatesToday: 0,
+    securityToday: 0,
+    conversionRateToday: "0%",
+    activityData: [],
+  };
+}
+
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const todayStr = today.toISOString();
+
+const totalProjects = assignedProjects.length;
+const activeProjects = assignedProjects.filter(p => p.status === "active").length;
+
+// Cumulative All-time stats
+const { count: totalRespondents } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes);
+
+const { count: completes } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes)
+  .eq("status", "complete");
+
+const { count: terminates } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes)
+  .eq("status", "terminate");
+
+const { count: quotafulls } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes)
+  .eq("status", "quotafull");
+
+const { count: securityTerminates } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes)
+  .eq("status", "security-terminate");
+
+// Today's stats
+const { count: clicksToday } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes)
+  .gte("started_at", todayStr);
+
+const { count: completesToday } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes)
+  .eq("status", "complete")
+  .gte("started_at", todayStr);
+
+const { count: quotafullToday } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes)
+  .eq("status", "quotafull")
+  .gte("started_at", todayStr);
+
+const { count: terminatesToday } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes)
+  .eq("status", "terminate")
+  .gte("started_at", todayStr);
+
+const { count: inProgressToday } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes)
+  .eq("status", "started")
+  .gte("started_at", todayStr);
+
+const { count: securityToday } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes)
+  .eq("status", "security-terminate")
+  .gte("started_at", todayStr);
+
+const { count: duplicatesToday } = await insforge.database.from("respondents")
+  .select("*", { count: 'exact', head: true })
+  .eq("supplier_code", supplierCode)
+  .in("project_code", projectCodes)
+  .eq("status", "duplicate")
+  .gte("started_at", todayStr);
+
+const conversionRateToday = clicksToday && clicksToday > 0
+  ? ((completesToday || 0) / clicksToday * 100).toFixed(1) + "%"
+  : "0%";
+
+return {
+  totalProjects: totalProjects || 0,
+  activeProjects: totalProjects || 0,
+  totalRespondents: totalRespondents || 0,
+  completes: completes || 0,
+  terminates: terminates || 0,
+  quotafulls: quotafulls || 0,
+  securityTerminates: securityTerminates || 0,
+
+  clicksToday: clicksToday || 0,
+  completesToday: completesToday || 0,
+  quotafullToday: quotafullToday || 0,
+  terminatesToday: terminatesToday || 0,
+  inProgressToday: inProgressToday || 0,
+  duplicatesToday: duplicatesToday || 0,
+  securityToday: securityToday || 0,
+  conversionRateToday,
+
+  activityData: [],
+};
+  }
+
+  async getSupplierRespondents(supplierCode: string, projectCodes: string[], omitSensitive: boolean = true): Promise < Respondent[] > {
+  if(projectCodes.length === 0) return [];
+
+  const { data } = await insforge.database.from("respondents")
+    .select("*")
+    .eq("supplier_code", supplierCode)
+    .in("project_code", projectCodes)
+    .order("started_at", { ascending: false });
+
+  const respondents = (data || []).map(mapRespondent);
+
+  if(omitSensitive) {
     return respondents.map(r => ({
-      id: r.id,
-      oiSession: r.oiSession,
-      projectCode: r.projectCode,
-      projectName: projectMap.get(r.projectCode) || "",
-      countryCode: r.countryCode,
-      supplierCode: r.supplierCode,
-      supplierName: supplierMap.get(r.supplierCode || "") || "",
-      supplierRid: r.supplierRid,
-      clientRid: r.clientRid,
-      status: r.status,
-      ipAddress: r.ipAddress,
-      userAgent: r.userAgent,
-      startedAt: r.startedAt,
-      completedAt: r.completedAt,
-      fraudScore: r.fraudScore
+      ...r,
+      clientRid: null,
+      surveyUrl: null,
+      s2sToken: null,
+      oiSession: "***",
+      verifyHash: null
     }));
   }
 
-  async getSupplierAssignmentsForExport(supplierId: string): Promise<any[]> {
-    const { data } = await insforge.database.from("supplier_assignments")
-      .select("*")
-      .eq("supplier_id", supplierId)
-      .order("created_at", { ascending: false });
-
-    const assignments = data || [];
-    const projects = await this.getProjects();
-    const projectMap = new Map(projects.map(p => [p.projectCode, p]));
-
-    return assignments.map(a => {
-      const p = projectMap.get(a.project_code);
-      return {
-        projectId: a.project_code,
-        projectName: p?.projectName || "",
-        clientId: p?.client || "",
-        totalTarget: 0,
-        completes: 0,
-        status: a.status,
-        cpa: 0,
-        revenue: 0
-      };
-    });
-  }
-
-  // Supplier Portal Implementation
-  async getSupplierUserByUsername(username: string): Promise<SupplierUser | undefined> {
-    const { data } = await insforge.database.from("supplier_users").select("*").eq("username", username).maybeSingle();
-    return data ? mapSupplierUser(data) : undefined;
-  }
-
-  async getSupplierUserById(id: string): Promise<SupplierUser | undefined> {
-    const { data } = await insforge.database.from("supplier_users").select("*").eq("id", id).maybeSingle();
-    return data ? mapSupplierUser(data) : undefined;
-  }
-
-  async getSupplierProjectAccess(userId: string): Promise<SupplierProjectAccess[]> {
-    const { data } = await insforge.database.from("supplier_project_access").select("*").eq("user_id", userId);
-    return (data || []).map(mapSupplierProjectAccess);
-  }
-
-  async getAssignedProjects(userId: string): Promise<Project[]> {
-    // Join project access with projects table
-    const access = await this.getSupplierProjectAccess(userId);
-    if (access.length === 0) return [];
-    
-    const projectIds = access.map(a => a.projectId);
-    const { data } = await insforge.database.from("projects").select("*").in("id", projectIds);
-    return (data || []).map(mapProject);
-  }
-
-  async createSupplierUser(user: InsertSupplierUser): Promise<SupplierUser> {
-    const dbUser = {
-      username: user.username,
-      password_hash: user.passwordHash,
-      supplier_id: user.supplierId,
-      supplier_code: user.supplierCode,
-      is_active: user.isActive,
-      created_by: user.createdBy
-    };
-    const { data, error } = await insforge.database.from("supplier_users").insert([dbUser]).select().single();
-    if (error) {
-      console.error("Supabase Error on Create Supplier User:", error);
-      throw new Error(`Failed to create supplier user: ${JSON.stringify(error)}`);
-    }
-    if (!data) throw new Error("Failed to create supplier user: No data");
-    return mapSupplierUser(data);
-  }
-
-  async updateSupplierUser(id: string, user: Partial<InsertSupplierUser>): Promise<SupplierUser | undefined> {
-    const dbUser: any = {};
-    if (user.username) dbUser.username = user.username;
-    if (user.passwordHash) dbUser.password_hash = user.passwordHash;
-    if (user.supplierId) dbUser.supplier_id = user.supplierId;
-    if (user.supplierCode) dbUser.supplier_code = user.supplierCode;
-    if (user.isActive !== undefined) dbUser.is_active = user.isActive;
-    if ((user as any).lastLogin) dbUser.last_login = (user as any).lastLogin;
-
-    const { data } = await insforge.database.from("supplier_users").update(dbUser).eq("id", id).select().single();
-    return data ? mapSupplierUser(data) : undefined;
-  }
-
-  async getSupplierDashboardStats(userId: string, supplierCode: string): Promise<DashboardStats> {
-    const assignedProjects = await this.getAssignedProjects(userId);
-    const projectCodes = assignedProjects.map(p => p.projectCode);
-    
-    if (projectCodes.length === 0) {
-      return {
-        totalProjects: 0,
-        activeProjects: 0,
-        totalRespondents: 0,
-        completes: 0,
-        terminates: 0,
-        quotafulls: 0,
-        securityTerminates: 0,
-        clicksToday: 0,
-        completesToday: 0,
-        quotafullToday: 0,
-        terminatesToday: 0,
-        inProgressToday: 0,
-        duplicatesToday: 0,
-        securityToday: 0,
-        conversionRateToday: "0%",
-        activityData: [],
-      };
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString();
-
-    const totalProjects = assignedProjects.length;
-    const activeProjects = assignedProjects.filter(p => p.status === "active").length;
-
-    // Cumulative All-time stats
-    const { count: totalRespondents } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes);
-
-    const { count: completes } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .eq("status", "complete");
-
-    const { count: terminates } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .eq("status", "terminate");
-
-    const { count: quotafulls } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .eq("status", "quotafull");
-
-    const { count: securityTerminates } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .eq("status", "security-terminate");
-
-    // Today's stats
-    const { count: clicksToday } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .gte("started_at", todayStr);
-
-    const { count: completesToday } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .eq("status", "complete")
-      .gte("started_at", todayStr);
-
-    const { count: quotafullToday } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .eq("status", "quotafull")
-      .gte("started_at", todayStr);
-
-    const { count: terminatesToday } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .eq("status", "terminate")
-      .gte("started_at", todayStr);
-
-    const { count: inProgressToday } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .eq("status", "started")
-      .gte("started_at", todayStr);
-
-    const { count: securityToday } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .eq("status", "security-terminate")
-      .gte("started_at", todayStr);
-
-    const { count: duplicatesToday } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .eq("status", "duplicate")
-      .gte("started_at", todayStr);
-
-    const conversionRateToday = clicksToday && clicksToday > 0 
-      ? ((completesToday || 0) / clicksToday * 100).toFixed(1) + "%"
-      : "0%";
-
-    return {
-      totalProjects: totalProjects || 0,
-      activeProjects: totalProjects || 0,
-      totalRespondents: totalRespondents || 0,
-      completes: completes || 0,
-      terminates: terminates || 0,
-      quotafulls: quotafulls || 0,
-      securityTerminates: securityTerminates || 0,
-      
-      clicksToday: clicksToday || 0,
-      completesToday: completesToday || 0,
-      quotafullToday: quotafullToday || 0,
-      terminatesToday: terminatesToday || 0,
-      inProgressToday: inProgressToday || 0,
-      duplicatesToday: duplicatesToday || 0,
-      securityToday: securityToday || 0,
-      conversionRateToday,
-      
-      activityData: [],
-    };
-  }
-
-  async getSupplierRespondents(supplierCode: string, projectCodes: string[], omitSensitive: boolean = true): Promise<Respondent[]> {
-    if (projectCodes.length === 0) return [];
-    
-    const { data } = await insforge.database.from("respondents")
-      .select("*")
-      .eq("supplier_code", supplierCode)
-      .in("project_code", projectCodes)
-      .order("started_at", { ascending: false });
-      
-    const respondents = (data || []).map(mapRespondent);
-    
-    if (omitSensitive) {
-      return respondents.map(r => ({
-        ...r,
-        clientRid: null,
-        surveyUrl: null,
-        s2sToken: null,
-        oiSession: "***",
-        verifyHash: null
-      }));
-    }
-    
     return respondents;
+}
+
+  async getSupplierProjectsWithStats(userId: string, supplierCode: string): Promise < any[] > {
+  const access = await this.getSupplierProjectAccess(userId);
+  const assignedCodes = access.map(a => a.projectCode);
+  if(assignedCodes.length === 0) return [];
+
+  const { data: projectsData } = await insforge.database
+    .from("projects")
+    .select("project_code, project_name, client, status, rid_country_code, created_at")
+    .in("project_code", assignedCodes)
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+
+  const projectsWithStats = await Promise.all(
+    (projectsData || []).map(async (project: any) => {
+      const { data: statsData } = await insforge.database
+        .from("respondents")
+        .select("status")
+        .eq("project_code", project.project_code)
+        .eq("supplier_code", supplierCode);
+
+      const rows = statsData || [];
+      return {
+        projectCode: project.project_code,
+        projectName: project.project_name,
+        client: project.client,
+        status: project.status,
+        countryCode: project.rid_country_code,
+        createdAt: project.created_at,
+        my_stats: {
+          total: rows.length,
+          complete: rows.filter((r: any) => r.status === "complete").length,
+          terminate: rows.filter((r: any) => r.status === "terminate" || r.status === "disqualified").length,
+          quotaFull: rows.filter((r: any) => r.status === "quotafull" || r.status === "quota_full").length,
+          security: rows.filter((r: any) => r.status === "security-terminate" || r.status === "security").length,
+          started: rows.filter((r: any) => r.status === "started").length,
+        }
+      };
+    })
+  );
+  return projectsWithStats;
+}
+
+  async getSupplierProjectStats(supplierCode: string, projectCode: string): Promise < any > {
+  const { data: rowsData } = await insforge.database
+    .from("respondents")
+    .select("status, started_at")
+    .eq("project_code", projectCode)
+    .eq("supplier_code", supplierCode);
+
+  const rows = rowsData || [];
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayStartMs = todayStart.getTime();
+
+  const todayRows = rows.filter((r: any) => new Date(r.started_at).getTime() >= todayStartMs);
+
+  return {
+    project_code: projectCode,
+    supplier_code: supplierCode,
+    all_time: {
+      total: rows.length,
+      complete: rows.filter((r: any) => r.status === "complete").length,
+      terminate: rows.filter((r: any) => r.status === "terminate" || r.status === "disqualified").length,
+      quota_full: rows.filter((r: any) => r.status === "quotafull" || r.status === "quota_full").length,
+      security: rows.filter((r: any) => r.status === "security-terminate" || r.status === "security").length,
+      started: rows.filter((r: any) => r.status === "started").length,
+    },
+    today: {
+      total: todayRows.length,
+      complete: todayRows.filter((r: any) => r.status === "complete").length,
+      terminate: todayRows.filter((r: any) => r.status === "terminate" || r.status === "disqualified").length,
+      quota_full: todayRows.filter((r: any) => r.status === "quotafull" || r.status === "quota_full").length,
+      security: todayRows.filter((r: any) => r.status === "security-terminate" || r.status === "security").length,
+    }
+  };
+}
+
+  async listSupplierUsers(): Promise < SupplierUser[] > {
+  const { data } = await insforge.database.from("supplier_users").select("*").order("created_at", { ascending: false });
+  return(data || []).map(mapSupplierUser);
   }
 
-  async getSupplierProjectsWithStats(userId: string, supplierCode: string): Promise<any[]> {
-    const access = await this.getSupplierProjectAccess(userId);
-    const assignedCodes = access.map(a => a.projectCode);
-    if (assignedCodes.length === 0) return [];
-
-    const { data: projectsData } = await insforge.database
-      .from("projects")
-      .select("project_code, project_name, client, status, rid_country_code, created_at")
-      .in("project_code", assignedCodes)
-      .eq("status", "active")
-      .order("created_at", { ascending: false });
-
-    const projectsWithStats = await Promise.all(
-      (projectsData || []).map(async (project: any) => {
-        const { data: statsData } = await insforge.database
-          .from("respondents")
-          .select("status")
-          .eq("project_code", project.project_code)
-          .eq("supplier_code", supplierCode);
-
-        const rows = statsData || [];
-        return {
-          projectCode: project.project_code,
-          projectName: project.project_name,
-          client: project.client,
-          status: project.status,
-          countryCode: project.rid_country_code,
-          createdAt: project.created_at,
-          my_stats: {
-            total: rows.length,
-            complete: rows.filter((r: any) => r.status === "complete").length,
-            terminate: rows.filter((r: any) => r.status === "terminate" || r.status === "disqualified").length,
-            quotaFull: rows.filter((r: any) => r.status === "quotafull" || r.status === "quota_full").length,
-            security: rows.filter((r: any) => r.status === "security-terminate" || r.status === "security").length,
-            started: rows.filter((r: any) => r.status === "started").length,
-          }
-        };
-      })
-    );
-    return projectsWithStats;
-  }
-
-  async getSupplierProjectStats(supplierCode: string, projectCode: string): Promise<any> {
-    const { data: rowsData } = await insforge.database
-      .from("respondents")
-      .select("status, started_at")
-      .eq("project_code", projectCode)
-      .eq("supplier_code", supplierCode);
-
-    const rows = rowsData || [];
-    const todayStart = new Date(); 
-    todayStart.setHours(0,0,0,0);
-    const todayStartMs = todayStart.getTime();
-
-    const todayRows = rows.filter((r: any) => new Date(r.started_at).getTime() >= todayStartMs);
-
-    return {
-      project_code: projectCode,
-      supplier_code: supplierCode,
-      all_time: {
-        total: rows.length,
-        complete: rows.filter((r: any) => r.status === "complete").length,
-        terminate: rows.filter((r: any) => r.status === "terminate" || r.status === "disqualified").length,
-        quota_full: rows.filter((r: any) => r.status === "quotafull" || r.status === "quota_full").length,
-        security: rows.filter((r: any) => r.status === "security-terminate" || r.status === "security").length,
-        started: rows.filter((r: any) => r.status === "started").length,
-      },
-      today: {
-        total: todayRows.length,
-        complete: todayRows.filter((r: any) => r.status === "complete").length,
-        terminate: todayRows.filter((r: any) => r.status === "terminate" || r.status === "disqualified").length,
-        quota_full: todayRows.filter((r: any) => r.status === "quotafull" || r.status === "quota_full").length,
-        security: todayRows.filter((r: any) => r.status === "security-terminate" || r.status === "security").length,
-      }
-    };
-  }
-
-  async listSupplierUsers(): Promise<SupplierUser[]> {
-    const { data } = await insforge.database.from("supplier_users").select("*").order("created_at", { ascending: false });
-    return (data || []).map(mapSupplierUser);
-  }
-
-  async listSupplierProjectAccess(): Promise<SupplierProjectAccess[]> {
-    const { data, error } = await insforge.database
-      .from("supplier_project_access")
-      .select(`
+  async listSupplierProjectAccess(): Promise < SupplierProjectAccess[] > {
+  const { data, error } = await insforge.database
+    .from("supplier_project_access")
+    .select(`
         *,
         supplier_users (username),
         projects (project_name)
       `)
-      .order("assigned_at", { ascending: false });
-    
-    if (error) {
-      console.error("Error listing supplier project access:", error);
-      return [];
-    }
-    
-    return (data || []).map(a => ({
-      ...mapSupplierProjectAccess(a),
-      username: a.supplier_users?.username,
-      projectName: a.projects?.project_name
-    }));
+    .order("assigned_at", { ascending: false });
+
+  if(error) {
+    console.error("Error listing supplier project access:", error);
+    return [];
   }
 
-  async assignProjectToSupplier(access: InsertSupplierProjectAccess): Promise<SupplierProjectAccess> {
-    const dbAccess = {
-      user_id: access.userId,
-      project_id: access.projectId,
-      project_code: access.projectCode,
-      assigned_by: access.assignedBy
-    };
-    
-    const { data, error } = await insforge.database.from("supplier_project_access").insert([dbAccess]).select().single();
-    if (error) {
-      console.error("DB insert error for supplier_project_access:", error);
-      throw error;
-    }
-    if (!data) throw new Error("Failed to assign project to supplier");
-    return mapSupplierProjectAccess(data);
+    return(data || []).map(a => ({
+    ...mapSupplierProjectAccess(a),
+    username: a.supplier_users?.username,
+    projectName: a.projects?.project_name
+  }));
   }
 
-  async removeProjectFromSupplier(id: string): Promise<void> {
-    await insforge.database.from("supplier_project_access").delete().eq("id", id);
+  async assignProjectToSupplier(access: InsertSupplierProjectAccess): Promise < SupplierProjectAccess > {
+  const dbAccess = {
+    user_id: access.userId,
+    project_id: access.projectId,
+    project_code: access.projectCode,
+    assigned_by: access.assignedBy
+  };
+
+  const { data, error } = await insforge.database.from("supplier_project_access").insert([dbAccess]).select().single();
+  if(error) {
+    console.error("DB insert error for supplier_project_access:", error);
+    throw error;
   }
+    if(!data) throw new Error("Failed to assign project to supplier");
+  return mapSupplierProjectAccess(data);
+}
 
-  async deleteSupplierUser(id: string): Promise<void> {
-    // Cleanup project access first
-    await insforge.database.from("supplier_project_access").delete().eq("user_id", id);
-    // Delete user
-    await insforge.database.from("supplier_users").delete().eq("id", id);
-  }
+  async removeProjectFromSupplier(id: string): Promise < void> {
+  await insforge.database.from("supplier_project_access").delete().eq("id", id);
+}
 
-  async getSupplierStatsOverview(supplierCode: string): Promise<{
-    completed: number;
-    disqualified: number;
-    quotafull: number;
-    security: number;
-  }> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString();
+  async deleteSupplierUser(id: string): Promise < void> {
+  // Cleanup project access first
+  await insforge.database.from("supplier_project_access").delete().eq("user_id", id);
+  // Delete user
+  await insforge.database.from("supplier_users").delete().eq("id", id);
+}
 
-    const { count: completed } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .eq("status", "complete")
-      .gte("started_at", todayStr);
+  async getSupplierStatsOverview(supplierCode: string): Promise < {
+  completed: number;
+  disqualified: number;
+  quotafull: number;
+  security: number;
+} > {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString();
 
-    const { count: disqualified } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .eq("status", "terminate")
-      .gte("started_at", todayStr);
+  const { count: completed } = await insforge.database.from("respondents")
+    .select("*", { count: 'exact', head: true })
+    .eq("supplier_code", supplierCode)
+    .eq("status", "complete")
+    .gte("started_at", todayStr);
 
-    const { count: quotafull } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .eq("status", "quotafull")
-      .gte("started_at", todayStr);
+  const { count: disqualified } = await insforge.database.from("respondents")
+    .select("*", { count: 'exact', head: true })
+    .eq("supplier_code", supplierCode)
+    .eq("status", "terminate")
+    .gte("started_at", todayStr);
 
-    const { count: security } = await insforge.database.from("respondents")
-      .select("*", { count: 'exact', head: true })
-      .eq("supplier_code", supplierCode)
-      .eq("status", "security-terminate")
-      .gte("started_at", todayStr);
+  const { count: quotafull } = await insforge.database.from("respondents")
+    .select("*", { count: 'exact', head: true })
+    .eq("supplier_code", supplierCode)
+    .eq("status", "quotafull")
+    .gte("started_at", todayStr);
 
-    return {
-      completed: completed || 0,
-      disqualified: disqualified || 0,
-      quotafull: quotafull || 0,
-      security: security || 0
-    };
-  }
+  const { count: security } = await insforge.database.from("respondents")
+    .select("*", { count: 'exact', head: true })
+    .eq("supplier_code", supplierCode)
+    .eq("status", "security-terminate")
+    .gte("started_at", todayStr);
+
+  return {
+    completed: completed || 0,
+    disqualified: disqualified || 0,
+    quotafull: quotafull || 0,
+    security: security || 0
+  };
+}
 
   async quickCreateProject(data: {
-    projectName: string;
-    projectCode: string;
-    surveyUrl: string;
-    countryCode: string;
-  }): Promise<{ project: Project; countrySurvey: CountrySurvey }> {
-    // 1. Create Project
-    const project = await this.createProject({
-      projectCode: data.projectCode,
-      projectName: data.projectName,
-      client: "Quick Create",
-      status: "active",
-      ridPrefix: "OI",
-      ridCountryCode: data.countryCode,
-      ridPadding: 4,
-      ridCounter: 1,
-      clientUidParam: "uid",
-      forcePidAsUid: false,
-      uidInjectionType: "query"
-    });
+  projectName: string;
+  projectCode: string;
+  surveyUrl: string;
+  countryCode: string;
+}): Promise < { project: Project; countrySurvey: CountrySurvey } > {
+  // 1. Create Project
+  const project = await this.createProject({
+    projectCode: data.projectCode,
+    projectName: data.projectName,
+    client: "Quick Create",
+    status: "active",
+    ridPrefix: "OI",
+    ridCountryCode: data.countryCode,
+    ridPadding: 4,
+    ridCounter: 1,
+    clientUidParam: "uid",
+    forcePidAsUid: false,
+    uidInjectionType: "query"
+  });
 
-    // 2. Create Country Survey
-    const countrySurvey = await this.createCountrySurvey({
-      projectId: project.id,
-      projectCode: project.projectCode,
-      countryCode: data.countryCode,
-      surveyUrl: data.surveyUrl,
-      status: "active"
-    });
+  // 2. Create Country Survey
+  const countrySurvey = await this.createCountrySurvey({
+    projectId: project.id,
+    projectCode: project.projectCode,
+    countryCode: data.countryCode,
+    surveyUrl: data.surveyUrl,
+    status: "active"
+  });
 
-    return { project, countrySurvey };
+  return { project, countrySurvey };
+}
+
+  async batchCreateSupplierAssignments(assignments: InsertSupplierAssignment[]): Promise < void> {
+  if(assignments.length === 0) return;
+
+  const dbAssignments = assignments.map(a => ({
+    project_code: a.projectCode,
+    country_code: a.countryCode,
+    supplier_id: a.supplierId,
+    generated_link: a.generatedLink,
+    status: a.status || "active",
+    notes: a.notes || null
+  }));
+
+  const { error } = await insforge.database.from("supplier_assignments").insert(dbAssignments);
+  if(error) {
+    console.error("Batch Create Supplier Assignments Error:", error);
+    throw error;
   }
-
-  async batchCreateSupplierAssignments(assignments: InsertSupplierAssignment[]): Promise<void> {
-    if (assignments.length === 0) return;
-    
-    const dbAssignments = assignments.map(a => ({
-      project_code: a.projectCode,
-      country_code: a.countryCode,
-      supplier_id: a.supplierId,
-      generated_link: a.generatedLink,
-      status: a.status || "active",
-      notes: a.notes || null
-    }));
-
-    const { error } = await insforge.database.from("supplier_assignments").insert(dbAssignments);
-    if (error) {
-      console.error("Batch Create Supplier Assignments Error:", error);
-      throw error;
-    }
-  }
+}
 }
 
 export const storage = new DatabaseStorage();

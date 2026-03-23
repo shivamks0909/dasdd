@@ -1,0 +1,31 @@
+[dotenv@17.3.1] injecting env (8) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+InsForge Client Initialized: {
+  baseUrl: 'https://cpim43si.us-west.insforge.app',
+  hasDatabase: true,
+  hasAuth: true,
+  hasStorage: true
+}
+Fetching ALL surveys...
+Total surveys: 9
+Survey: ID=b16606ef-91f2-4dcd-aebe-c5821b63f023, ProjectCode="QWDQDQW", CountryCode="IN"
+Survey: ID=3c86d214-6ed4-48be-9a29-1826e1049cdf, ProjectCode="QWDQDQW", CountryCode="IN"
+Survey: ID=916f8d66-c1e6-44c3-b700-89c5451d8416, ProjectCode="QWDQDQW", CountryCode="IN"
+Survey: ID=842abb48-077f-4839-94bf-dd1396cb344d, ProjectCode="SDAWEQ", CountryCode="GL"
+Survey: ID=8b92a531-5b70-4abb-b8f8-616bcdda4b1b, ProjectCode="SDAWEQ", CountryCode="GL"
+Survey: ID=917b28ea-2118-4703-95e9-d53135039c2c, ProjectCode="SDAWEQ", CountryCode="IN"
+Survey: ID=222e9c1a-2a49-45ee-a731-17f5b5e32cb2, ProjectCode="PATHTEST", CountryCode="IN"
+Survey: ID=4fbc067f-27ca-4e3b-b50e-f00ba6e9de1a, ProjectCode="PATHTEST", CountryCode="IN"
+Survey: ID=6b51a639-fc27-45e7-a2cf-a33d306b2f80, ProjectCode="PATHTEST", CountryCode="GL"
+
+Manual filter for "PATHTEST" / "IN":
+Match found manually: YES
+Matched Survey: {
+  "id": "222e9c1a-2a49-45ee-a731-17f5b5e32cb2",
+  "project_id": "351e6068-5152-4278-a14f-497962a7e847",
+  "project_code": "PATHTEST",
+  "country_code": "IN",
+  "survey_url": "https://track.opinioninsights.in/r/sdaweq/VERCEL/[UID]",
+  "status": "active",
+  "created_at": "2026-03-23T03:01:41.922903+00:00"
+}
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 76

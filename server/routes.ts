@@ -39,14 +39,14 @@ export async function registerRoutes(
     try {
       const { username, password } = req.body;
       console.log(`Login attempt for username: ${username}`);
-      
+
       if (!username || !password) {
         return res.status(400).json({ message: "Username and password are required" });
       }
 
       console.log("Fetching admin from storage...");
       const admin = await storage.getAdminByUsername(username);
-      
+
       if (!admin) {
         console.log(`Login failed: Admin user ${username} not found`);
         return res.status(401).json({ message: "Invalid credentials" });
@@ -95,8 +95,8 @@ export async function registerRoutes(
     try {
       const projects = await storage.getProjects();
       const techProject = projects.find(p => p.projectCode === "OPI-TECH-24");
-      return res.json({ 
-        totalProjects: projects.length, 
+      return res.json({
+        totalProjects: projects.length,
         techProjectFound: !!techProject,
         techProjectStatus: techProject?.status,
         projectCodes: projects.map(p => p.projectCode)
@@ -207,8 +207,8 @@ export async function registerRoutes(
 
       // 1. UID Detection and Validation
       const uidParams = ["uid", "rid", "resp", "respondent", "userid"];
-      const hasUidPlaceholder = uidParams.some(param => 
-        survey_url.toLowerCase().includes(`{${param}}`) || 
+      const hasUidPlaceholder = uidParams.some(param =>
+        survey_url.toLowerCase().includes(`{${param}}`) ||
         survey_url.toLowerCase().includes(`[${param}]`) ||
         survey_url.toLowerCase().includes(`${param}=`)
       );
@@ -313,7 +313,7 @@ export async function registerRoutes(
   app.post("/api/projects/:code/s2s-config", requireAdmin, async (req: Request, res: Response) => {
     const { s2sSecret, requireS2S } = req.body;
     const code = req.params.code as string;
-    
+
     const existing = await db.query.projectS2sConfig.findFirst({
       where: eq(projectS2sConfig.projectCode, code)
     });
@@ -437,7 +437,7 @@ export async function registerRoutes(
         notes: notes || null,
         status: 'active'
       });
-      
+
       return res.status(201).json(assignment);
     } catch (error: any) {
       console.error("Link Generator Error:", error);
@@ -458,7 +458,7 @@ export async function registerRoutes(
 
   app.get("/api/link-generator/assignments/export", requireAdmin, async (_req: Request, res: Response) => {
     const assignments = await storage.getSupplierAssignments();
-    
+
     const headers = ["ID", "Project Code", "Project Name", "Country Code", "Supplier Code", "Supplier Name", "Link", "Status", "Notes", "Created At"];
     const rows = assignments.map(a => [
       a.id,
@@ -474,7 +474,7 @@ export async function registerRoutes(
     ]);
 
     const csvContent = [headers, ...rows].map(r => r.join(",")).join("\n");
-    
+
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", "attachment; filename=supplier_assignments_export.csv");
     return res.status(200).send(csvContent);
@@ -562,7 +562,7 @@ export async function registerRoutes(
     if (!parsed.success) {
       return res.status(400).json({ message: "Validation failed", errors: parsed.error.flatten() });
     }
-    
+
     // Hash password before saving
     const passwordHash = await bcrypt.hash(req.body.password || req.body.passwordHash || "supplier123", 10);
     const user = await storage.createSupplierUser({
@@ -633,10 +633,10 @@ export async function registerRoutes(
     try {
       const user = await storage.getSupplierUserById(req.session.supplierUserId!);
       if (!user) return res.status(404).json({ message: "User not found" });
-      
+
       const stats = await storage.getSupplierDashboardStats(user.id, user.supplierCode);
       const projects = await storage.getAssignedProjects(user.id);
-      
+
       return res.json({
         ...stats,
         assignedProjects: projects
@@ -663,7 +663,7 @@ export async function registerRoutes(
     try {
       const user = await storage.getSupplierUserById(req.session.supplierUserId!);
       if (!user) return res.status(404).json({ message: "User not found" });
-      
+
       const projects = await storage.getSupplierProjectsWithStats(user.id, user.supplierCode);
       return res.json(projects);
     } catch (error) {
@@ -693,10 +693,10 @@ export async function registerRoutes(
   app.get("/api/supplier/responses", requireSupplier, async (req: Request, res: Response) => {
     const user = await storage.getSupplierUserById(req.session.supplierUserId!);
     if (!user) return res.status(404).json({ message: "User not found" });
-    
+
     const access = await storage.getSupplierProjectAccess(user.id);
     const projectCodes = access.map(a => a.projectCode);
-    
+
     const respondents = await storage.getSupplierRespondents(user.supplierCode, projectCodes);
     // Filter sensitive fields like s2sToken for supplier portal
     const safeRespondents = respondents.map(({ s2sToken, verifyHash, ...rest }) => rest);
@@ -710,12 +710,12 @@ export async function registerRoutes(
 
       const access = await storage.getSupplierProjectAccess(user.id);
       const projectCodes = access.map(a => a.projectCode);
-      
+
       const respondents = await storage.getSupplierRespondents(user.supplierCode, projectCodes, true);
       const projects = await storage.getAssignedProjects(user.id);
-      const suppliers = await storage.getSuppliers?.() || [] as Supplier[]; 
+      const suppliers = await storage.getSuppliers?.() || [] as Supplier[];
       const supplier = suppliers.find(s => s.code === user.supplierCode);
-      
+
       const logs = await db.query.s2sLogs.findMany({
         where: (logs: any, { eq, and }) => and(
           eq(logs.supplierCode, user.supplierCode)
@@ -752,17 +752,19 @@ export async function registerRoutes(
   // sup and uid are OPTIONAL — links work with or without a supplier
   const handleTrackingRequest = async (req: Request, res: Response, codeFromPath?: string) => {
     console.log("!!! CRITICAL DEBUG: handleTrackingRequest ENTERED !!!");
+    console.log("!!! [Routes] handleTrackingRequest STARTED !!!");
+    console.log(`[Routes] Raw Query: ${JSON.stringify(req.query)}`);
     const { code, country, sup, uid, rid, toid, zid, pid, mid, sid, ...remainingParams } = req.query;
     const projectCode = (codeFromPath || code) as string;
     const countryCode = country as string || "IN";
-    
+
     // Normalize Supplier RID from common parameter names used by various platforms
     // rid (Dynata), toid (Lucid), zid (Cint), uid (Generic), pid (Pollfish), mid (Mindshare), sid (SurveySampling)
     const supplierRid = (uid || rid || toid || zid || pid || mid || sid) as string;
 
     console.log(`[Routes] /track hit: codeFromPath=${codeFromPath}, query=${JSON.stringify(req.query)}`);
     console.log(`[Routes] Extracted: project=${projectCode}, country=${countryCode}, supplier=${sup}, supRid=${supplierRid}`);
-    
+
     // Ensure all these parameters are preserved in extraParams for auto-injection/appending
     const extraParams: Record<string, string> = { ...remainingParams as Record<string, string> };
     if (uid) extraParams.uid = uid as string;
@@ -781,19 +783,26 @@ export async function registerRoutes(
       extraParams,
       ip: (req.headers["x-forwarded-for"] as string)?.split(",")[0] || req.ip || "unknown",
       userAgent: req.headers["user-agent"]
+    }).catch(err => {
+      console.error("!!! [Routes] processTrackingRequest FATAL CRASH !!!", err);
+      return { error: { status: 500, message: `Fatal Crash: ${err.message}` } };
     });
 
     console.log(`[Routes] Tracking Result for ${projectCode}:`, JSON.stringify(result));
 
-    if (result.error) {
-      if (result.error.status === 302 && result.error.internalRedirect) {
-        return res.redirect(result.error.internalRedirect);
+    const resultObj = result as any;
+    if (resultObj.error) {
+      if (resultObj.error.internalRedirect) {
+        console.log(`[Routes] Redirecting to internal path: ${resultObj.error.internalRedirect}`);
+        return res.redirect(resultObj.error.internalRedirect);
       }
-      return res.status(result.error.status).send(result.error.message);
+      console.log(`[Routes] Returning error status ${resultObj.error.status}: ${resultObj.error.message}`);
+      return res.status(resultObj.error.status).send(resultObj.error.message);
     }
 
-    if (result.redirectUrl) {
-      return res.redirect(result.redirectUrl);
+    if (resultObj.redirectUrl) {
+      console.log(`[Routes] Redirecting to destination: ${resultObj.redirectUrl}`);
+      return res.redirect(resultObj.redirectUrl);
     }
 
     return res.status(500).send("Unknown error");
@@ -809,7 +818,7 @@ export async function registerRoutes(
   // ====== CALLBACK ENDPOINTS ======
   const handleCallback = async (req: Request, res: Response, status: string) => {
     const { oi_session, clickid, pid, uid, cid, guid, rid, session_token } = req.query;
-    
+
     let respondent: Respondent | undefined;
 
     // 1. Try finding by oi_session (Cleanest)
@@ -820,23 +829,23 @@ export async function registerRoutes(
 
     // 2. Try finding by clickid (Robustness)
     if (!respondent && clickid) {
-       respondent = await storage.getRespondentByClickid(clickid as string);
-       console.log(`[Callback] Lookup by clickid (${clickid}): ${respondent ? 'Found' : 'Not Found'}`);
+      respondent = await storage.getRespondentByClickid(clickid as string);
+      console.log(`[Callback] Lookup by clickid (${clickid}): ${respondent ? 'Found' : 'Not Found'}`);
     }
 
-    // 3. Try finding by Project Code + Supplier UID (Recovery)
+    // 3. Try finding by Project Code + Sent UID (Recovery for ExploreResearch)
     if (!respondent && pid && uid) {
-      respondent = await storage.getRespondentBySupplierRid(pid as string, uid as string);
-      console.log(`[Callback] Lookup by pid+uid (${pid}+${uid}): ${respondent ? 'Found' : 'Not Found'}`);
+      respondent = await storage.getRespondentBySentUid(pid as string, uid as string);
+      console.log(`[Callback] Lookup by sent_pid+sent_uid (${pid}+${uid}): ${respondent ? 'Found' : 'Not Found'}`);
     }
 
     if (!respondent) {
-        console.warn(`[Callback] Could not find session. Status: ${status}, Params:`, JSON.stringify(req.query));
-        // If we can't find it, show a meaningful landing page instead of raw error
-        let statusToUse = status;
-        if (statusToUse === 'quota') statusToUse = 'quotafull';
-        const landingPath = (routerService.internalPathMap as any)[statusToUse] || '/pages/terminate';
-        return res.redirect(`${landingPath}?status=${statusToUse}&error=session_not_found`);
+      console.warn(`[Callback] Could not find session. Status: ${status}, Params:`, JSON.stringify(req.query));
+      // If we can't find it, show a meaningful landing page instead of raw error
+      let statusToUse = status;
+      if (statusToUse === 'quota') statusToUse = 'quotafull';
+      const landingPath = (routerService.internalPathMap as any)[statusToUse] || '/pages/terminate';
+      return res.redirect(`${landingPath}?status=${statusToUse}&error=session_not_found`);
     }
 
     if (respondent.status !== 'started' && respondent.status !== 'pending') {
@@ -867,7 +876,7 @@ export async function registerRoutes(
 
     // Update Status
     if (finalStatus !== 'security-terminate' || status === 'security-terminate') {
-       await storage.updateRespondentStatus(respondent.oiSession, finalStatus);
+      await storage.updateRespondentStatus(respondent.oiSession, finalStatus);
     }
 
     // Get Supplier & Project for Redirect calculation
@@ -896,8 +905,8 @@ export async function registerRoutes(
   // Uses InsForge HTTP SDK to avoid direct TCP database connections that time out locally
   app.get("/status", async (req: Request, res: Response) => {
     const { code, uid, type } = req.query;
-    if (!code || !uid || !type) {
-      return res.status(400).send("Missing required parameters: code, uid, type");
+    if (!code || !type) {
+      return res.status(400).send("Missing required parameters: code, type");
     }
 
     try {
@@ -912,12 +921,25 @@ export async function registerRoutes(
 
       if (error) throw error;
 
-      const raw = rows?.[0];
+      let raw = rows?.[0];
+      
+      // Fallback: If client mistakenly used this link (meant for suppliers), 
+      // the uid in the URL will be the sent_uid (OPIN...) instead of supplier_rid.
+      if (!raw && uid) {
+        const { data: rowsFallback } = await insforge.database
+          .from('respondents')
+          .select('*')
+          .eq('sent_pid', (code as string).toUpperCase())
+          .eq('sent_uid', uid as string)
+          .order('started_at', { ascending: false })
+          .limit(1);
+        raw = rowsFallback?.[0];
+      }
       if (!raw) {
         // No session found - redirect straight to the internal status landing page
         let statusToUse = (type as string).toLowerCase();
         if (statusToUse === 'quota') statusToUse = 'quotafull';
-        else if (['security_terminate','duplicate','duplicate_ip','duplicate_string'].includes(statusToUse)) statusToUse = 'security';
+        else if (['security_terminate', 'duplicate', 'duplicate_ip', 'duplicate_string'].includes(statusToUse)) statusToUse = 'security';
         const landingPath = (routerService.internalPathMap as any)[statusToUse] || '/pages/terminate';
         return res.redirect(`${landingPath}?pid=${(code as string).toUpperCase()}&uid=${uid}`);
       }
@@ -928,7 +950,7 @@ export async function registerRoutes(
       // Map 'type' to our internal status logic
       let statusToUse = (type as string).toLowerCase();
       if (statusToUse === 'quota') statusToUse = 'quotafull';
-      else if (['security_terminate','duplicate','duplicate_ip','duplicate_string'].includes(statusToUse)) statusToUse = 'security-terminate';
+      else if (['security_terminate', 'duplicate', 'duplicate_ip', 'duplicate_string'].includes(statusToUse)) statusToUse = 'security-terminate';
 
       return handleCallback(req, res, statusToUse);
     } catch (e) {
@@ -1006,8 +1028,8 @@ export async function registerRoutes(
 
       // Mark verified
       await db.update(respondents)
-        .set({ 
-          s2sVerified: true, 
+        .set({
+          s2sVerified: true,
           s2sReceivedAt: new Date(),
           status: status || 'complete'
         })
@@ -1067,7 +1089,7 @@ export async function registerRoutes(
             createdProjects.push(existing);
             results.push(`Skipped project (exists): ${pd.projectCode}`);
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       // --- SUPPLIERS ---
@@ -1086,7 +1108,7 @@ export async function registerRoutes(
           } else {
             results.push(`Skipped supplier (exists): ${sd.code}`);
           }
-        } catch (_) {}
+        } catch (_) { }
       }
 
       // --- RESPONDENTS ---
@@ -1134,7 +1156,7 @@ export async function registerRoutes(
             });
 
             respondentCount++;
-          } catch (_) {}
+          } catch (_) { }
         }
       }
       results.push(`Created ${respondentCount} respondents across ${createdProjects.length} projects`);

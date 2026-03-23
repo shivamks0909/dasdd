@@ -2,14 +2,11 @@ export interface UrlIntelligenceResult {
   finalUrl: string;
   uidPosition: 'path' | 'query' | 'none';
   uidSegmentValue: string | null;
+  sentUid?: string;
 }
 
 /**
  * Intelligently injects client_rid and oi_session into a survey URL.
- * Handles:
- * 1. Query param substitution (e.g. ?uid=[UID])
- * 2. Query param appending (if no placeholder found)
- * 3. Path segment substitution (e.g. /VERCEL/[UID])
  */
 export function injectUidAndSession(
   urlStr: string,
@@ -21,47 +18,39 @@ export function injectUidAndSession(
   console.log(`[UrlIntelligence] Input URL: ${urlStr}`);
   console.log(`[UrlIntelligence] Injecting RID: ${clientRid}, Session: ${oiSession}, Param: ${clientUidParam}, Type: ${uidInjectionType}`);
 
-  const placeholders = ["{RID}", "[RID]", "{rid}", "[rid]", "{UID}", "[UID]", "{uid}", "[uid]"];
-  const encodedPlaceholders = placeholders.map(p => encodeURIComponent(p));
-
   let workingUrl = urlStr;
+  let replacedAny = false;
   let uidPosition: 'path' | 'query' | 'none' = 'none';
   let uidSegmentValue: string | null = null;
-  let replacedAny = false;
+  let finalSentUid: string | null = null;
 
-  // 1. Heavy-duty replacement on the RAW string for ALL known placeholders
-  // Specifically ensure [UID] and [RID] are replaced case-insensitively and regardless of brackets/braces
   const patternsForReplacement = [
-    { pattern: /\[UID\]/gi, type: 'path' }, 
-    { pattern: /\{UID\}/gi, type: 'path' },
-    { pattern: /\[RID\]/gi, type: 'path' }, 
-    { pattern: /\{RID\}/gi, type: 'path' },
-    { pattern: /%5BUID%5D/gi, type: 'path' }, 
-    { pattern: /%7BUID%7D/gi, type: 'path' },
-    { pattern: /%5BRID%5D/gi, type: 'path' }, 
-    { pattern: /%7BRID%7D/gi, type: 'path' }
+    { pattern: /\[UID\]/gi }, 
+    { pattern: /\{UID\}/gi },
+    { pattern: /\[RID\]/gi }, 
+    { pattern: /\{RID\}/gi },
+    { pattern: /%5BUID%5D/gi }, 
+    { pattern: /%7BUID%7D/gi },
+    { pattern: /%5BRID%5D/gi }, 
+    { pattern: /%7BRID%7D/gi }
   ];
 
   const originalUrlParts = urlStr.split('?');
   const pathPart = originalUrlParts[0];
   const queryPart = originalUrlParts[1] || '';
 
+  // 1. Placeholder replacement
   patternsForReplacement.forEach(({ pattern }) => {
-    // Check if we find a placeholder in the URL
     if (pattern.test(urlStr)) {
       console.log(`[UrlIntelligence] Found placeholder matching: ${pattern}`);
-      
-      // Reset regex index due to 'g' flag
       pattern.lastIndex = 0;
-      
       workingUrl = workingUrl.replace(pattern, clientRid);
       replacedAny = true;
+      finalSentUid = clientRid;
     }
   });
 
-  // Precise position detection
   if (replacedAny) {
-    // We categorize based on the ORIGINAL url structure to see WHERE it was replaced
     const isPlaceholderInPath = patternsForReplacement.some(({ pattern }) => {
       pattern.lastIndex = 0;
       return pattern.test(pathPart);
@@ -86,42 +75,49 @@ export function injectUidAndSession(
   // 2. Parse into URL object for structured manipulation
   let urlObj: URL;
   try {
-    urlObj = new URL(workingUrl.includes('://') ? workingUrl : `https://${workingUrl}`);
+    const fullUrl = workingUrl.includes('://') ? workingUrl : `https://${workingUrl}`;
+    urlObj = new URL(fullUrl);
   } catch (err) {
     console.error(`[UrlIntelligence] URL Parse Error:`, err);
-    return { finalUrl: workingUrl, uidPosition: 'none', uidSegmentValue: null };
+    return { finalUrl: workingUrl, uidPosition: 'none', uidSegmentValue: null, sentUid: clientRid };
   }
 
-  // 3. Forced Injection Logic if no placeholder was replaced OR if type is 'query'/'path' explicitly
+  // 3. Handle blank uid= param (Case: ?uid=)
+  if (!replacedAny && urlObj.searchParams.has(clientUidParam) && !urlObj.searchParams.get(clientUidParam)) {
+    console.log(`[UrlIntelligence] Detected blank ${clientUidParam}= param. Filling with ${clientRid}`);
+    urlObj.searchParams.set(clientUidParam, clientRid);
+    replacedAny = true;
+    finalSentUid = clientRid;
+    uidPosition = 'query';
+    uidSegmentValue = 'blank_param_fill';
+  }
+
+  // 4. Force Injection Logic if no placeholder was replaced
   if (!replacedAny) {
     if (uidInjectionType === 'path') {
-        // Path injection usually needs a placeholder, but if forced, we try to append to path
         const path = urlObj.pathname;
-        if (path.endsWith('/')) {
-            urlObj.pathname = path + clientRid;
-        } else {
-            urlObj.pathname = path + '/' + clientRid;
-        }
+        urlObj.pathname = path.endsWith('/') ? `${path}${clientRid}` : `${path}/${clientRid}`;
         uidPosition = 'path';
-        uidSegmentValue = 'path_append';
+        uidSegmentValue = 'appended_to_path';
     } else {
-        // Default: Query injection
-        console.log(`[UrlIntelligence] No placeholder found, injecting into query param: ${clientUidParam}`);
         urlObj.searchParams.set(clientUidParam, clientRid);
         uidPosition = 'query';
-        uidSegmentValue = clientUidParam;
+        uidSegmentValue = 'appended_as_query';
     }
+    finalSentUid = clientRid;
   }
 
-  // 4. Always Append oi_session
+  // 5. Always Append oi_session
   urlObj.searchParams.set('oi_session', oiSession);
 
   const finalUrl = urlObj.toString();
   console.log(`[UrlIntelligence] Final URL: ${finalUrl}`);
 
-  return {
-    finalUrl,
-    uidPosition,
-    uidSegmentValue
+  return { 
+    finalUrl, 
+    uidPosition, 
+    uidSegmentValue,
+    sentUid: finalSentUid || clientRid
   };
 }
+
