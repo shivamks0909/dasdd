@@ -17,6 +17,7 @@ export interface TrackingParams {
 
 export interface TrackingResult {
   redirectUrl?: string;
+  oiSession?: string;
   error?: {
     status: number;
     message: string;
@@ -229,7 +230,7 @@ export async function processTrackingRequest(params: TrackingParams): Promise<Tr
         throw new Error(`Database save failed: ${saveErr.message}`);
     }
 
-    return { redirectUrl };
+    return { redirectUrl, oiSession };
 
   } catch (err: any) {
     console.error("[TrackingCore] UNCAUGHT ERROR:", err);

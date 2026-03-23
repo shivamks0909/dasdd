@@ -802,6 +802,17 @@ export async function registerRoutes(
 
     if (resultObj.redirectUrl) {
       console.log(`[Routes] Redirecting to destination: ${resultObj.redirectUrl}`);
+      // Set oi_session cookie so /status can recover the session even when ExploreResearch returns uid= blank
+      if (resultObj.oiSession) {
+        res.cookie('oi_s', resultObj.oiSession, {
+          maxAge: 60 * 60 * 2 * 1000, // 2 hours
+          httpOnly: true,
+          sameSite: 'none',
+          secure: true,
+          path: '/'
+        });
+        console.log(`[Routes] Set session cookie oi_s=${resultObj.oiSession}`);
+      }
       return res.redirect(resultObj.redirectUrl);
     }
 
@@ -919,27 +930,41 @@ export async function registerRoutes(
     }
 
     try {
-      // Lookup priority: oi_session (always embedded in outgoing URLs) → supplier_rid (uid) → sent_uid fallback
+      // Lookup priority: cookie (most reliable when ExploreResearch returns uid= blank) → oi_session param → supplier_rid → sent_uid
       let raw: any = null;
 
-      // 1. Try oi_session first — most reliable since we always embed it in survey URLs
+      // 0. Try cookie-based oi_session — set when we redirected to ExploreResearch, survives even if uid comes back blank
+      const cookieSession = req.cookies?.oi_s || '';
+      if (cookieSession) {
+        const { data: byCookie } = await insforge.database
+          .from('respondents')
+          .select('*')
+          .eq('oi_session', cookieSession)
+          .order('started_at', { ascending: false })
+          .limit(1);
+        raw = byCookie?.[0] || null;
+        if (raw) console.log(`[Status] Found by cookie oi_s: ${cookieSession}`);
+        // Clear the cookie now that we've used it
+        if (raw) res.clearCookie('oi_s', { path: '/' });
+      }
+
+      // 1. Try oi_session query param
       const oi_session_str = oi_session as string || '';
-      if (oi_session_str) {
+      if (!raw && oi_session_str) {
         const { data: bySession } = await insforge.database
           .from('respondents')
           .select('*')
           .eq('oi_session', oi_session_str)
           .limit(1);
         raw = bySession?.[0] || null;
-        if (raw) console.log(`[Status] Found by oi_session: ${oi_session_str}`);
+        if (raw) console.log(`[Status] Found by oi_session param: ${oi_session_str}`);
       }
 
-      // 2. Try supplier_rid (the uid ExploreResearch returns back)
+      // 2. Try supplier_rid (uid ExploreResearch sends back)
       if (!raw && uid && (uid as string).trim() !== '') {
         const { data: byRid } = await insforge.database
           .from('respondents')
           .select('*')
-          .eq('project_code', (code as string).toUpperCase())
           .eq('supplier_rid', uid as string)
           .order('started_at', { ascending: false })
           .limit(1);
@@ -947,7 +972,7 @@ export async function registerRoutes(
         if (raw) console.log(`[Status] Found by supplier_rid: ${uid}`);
       }
 
-      // 3. Fallback: uid might be our sent_uid (client_rid) not supplier_rid
+      // 3. Fallback: uid might be our sent_uid (client_rid)
       if (!raw && uid && (uid as string).trim() !== '') {
         const { data: bySentUid } = await insforge.database
           .from('respondents')
@@ -961,7 +986,7 @@ export async function registerRoutes(
 
       if (!raw) {
         // No session found - redirect gracefully to the internal landing page
-        console.warn(`[Status] Session not found. code=${code}, uid=${uid}, oi_session=${oi_session}`);
+        console.warn(`[Status] Session not found. code=${code}, uid=${uid}, oi_session=${oi_session}, cookie=${cookieSession}`);
         let statusToUse = (type as string).toLowerCase();
         if (statusToUse === 'quota') statusToUse = 'quotafull';
         else if (['security_terminate', 'duplicate', 'duplicate_ip', 'duplicate_string'].includes(statusToUse)) statusToUse = 'security';

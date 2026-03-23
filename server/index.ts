@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 console.log("##################################################");
 console.log("!!! ATTENTION: THIS IS THE CORRECT INDEX.TS !!!");
 console.log("TIMESTAMP:", new Date().toISOString());
@@ -25,6 +26,8 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
