@@ -13,8 +13,8 @@ export async function GET(req: NextRequest) {
 
   console.log(`[StatusRoute] Request: code=${code}, uid=${uid}, type=${type}`);
 
-  if (!code || !uid || !type) {
-    return new NextResponse("Missing required parameters", { status: 400 });
+  if (!code || !type) {
+    return new NextResponse("Missing required parameters (code and type are required)", { status: 400 });
   }
 
   // Determine base URL: fallback to current request origin
@@ -51,24 +51,35 @@ export async function GET(req: NextRequest) {
 
         if (project) {
             // Update respondent if found
-            const respondentArray = await pool.query(
-                "SELECT * FROM respondents WHERE project_code = $1 AND supplier_rid = $2 LIMIT 1",
-                [code, uid]
-            );
-            const respondent = respondentArray.rows[0];
+            let respondent = null;
+            if (uid) {
+                const respondentArray = await pool.query(
+                    "SELECT * FROM respondents WHERE project_code = $1 AND supplier_rid = $2 LIMIT 1",
+                    [code, uid]
+                );
+                respondent = respondentArray.rows[0];
+            } else {
+                console.log(`[StatusRoute] UID is blank. Recovering most recent session for ${code}`);
+                const respondentArray = await pool.query(
+                    "SELECT * FROM respondents WHERE project_code = $1 ORDER BY started_at DESC LIMIT 1",
+                    [code]
+                );
+                respondent = respondentArray.rows[0];
+            }
 
             if (respondent) {
               const validStatuses = ['complete', 'terminate', 'quotafull', 'security-terminate'];
               let dbStatus = type.toLowerCase();
               if (dbStatus === 'quota') dbStatus = 'quotafull';
-              if (dbStatus === 'security_terminate' || dbStatus === 'duplicate_ip' || dbStatus === 'duplicate_string') {
+              if (['security_terminate', 'duplicate_ip', 'duplicate_string', 'security'].includes(dbStatus)) {
                 dbStatus = 'security-terminate';
               }
               const isValidStatus = validStatuses.includes(dbStatus);
 
+              console.log(`[StatusRoute] Updating respondent ${respondent.id} to status ${dbStatus}`);
               await pool.query(
                 "UPDATE respondents SET status = $1, completed_at = $2 WHERE id = $3",
-                [isValidStatus ? dbStatus : type, dbStatus === 'complete' ? new Date() : null, respondent.id]
+                [isValidStatus ? dbStatus : dbStatus, dbStatus === 'complete' ? new Date() : null, respondent.id]
               );
             }
 
