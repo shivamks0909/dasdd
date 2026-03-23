@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processTrackingRequest } from "@server/lib/tracking-core";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
-  console.log(`[NextRoute] GET /t/[code] triggered for code=${(await params).code}`);
-  const { code } = await params;
+export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string[] }> }) {
+  const { slug } = await params;
+  console.log(`[NextRoute] GET /r/[...slug] triggered for slug=${slug.join('/')}`);
+  
+  const projectCode = slug[0];
+  const supplierCodeFromPath = slug[1];
+  const supplierRidFromPath = slug[2];
+  
   const searchParams = req.nextUrl.searchParams;
   
-  const rawParams = Object.fromEntries(searchParams.entries());
-  const supplierRid = (rawParams.uid || rawParams.rid || rawParams.toid || rawParams.zid || `DIR-${Math.random().toString(36).substring(7)}`);
-
-  console.log(`[NextRoute] Processing tracking for supplierRid=${supplierRid}`);
-
   const result = await processTrackingRequest({
-    projectCode: code,
-    countryCode: rawParams.country || '',
-    supplierCode: rawParams.sup || undefined,
-    supplierRid,
-    extraParams: rawParams,
+    projectCode: projectCode,
+    countryCode: searchParams.get('country') || '',
+    supplierCode: supplierCodeFromPath || searchParams.get('sup') || undefined,
+    supplierRid: supplierRidFromPath || searchParams.get('uid') || undefined,
+    extraParams: Object.fromEntries(searchParams.entries()),
     ip: req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown",
     userAgent: req.headers.get("user-agent") || "unknown"
   });
