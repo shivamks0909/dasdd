@@ -5,17 +5,32 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const { slug } = await params;
   console.log(`[NextRoute] GET /t/[...slug] triggered for slug=${slug.join('/')}`);
   
-  const projectCode = slug[0];
-  const supplierCodeFromPath = slug[1];
-  const supplierRidFromPath = slug[2];
-  
   const searchParams = req.nextUrl.searchParams;
+  const projectCode = slug[0];
+  let countryCode = searchParams.get('country') || '';
+  let supplierCodeFromPath = searchParams.get('sup') || undefined;
+  let supplierRidFromPath = searchParams.get('uid') || undefined;
+
+  // Handle path-based parameters: /t/[project]/[country]/[uid] or /t/[project]/[uid]
+  if (slug.length === 2) {
+    // /t/[project]/[uid]
+    supplierRidFromPath = slug[1];
+  } else if (slug.length === 3) {
+    // /t/[project]/[country]/[uid]
+    countryCode = slug[1];
+    supplierRidFromPath = slug[2];
+  } else if (slug.length >= 4) {
+    // /t/[project]/[country]/[supplier]/[uid]
+    countryCode = slug[1];
+    supplierCodeFromPath = slug[2];
+    supplierRidFromPath = slug[slug.length - 1];
+  }
   
   const result = await processTrackingRequest({
     projectCode: projectCode,
-    countryCode: searchParams.get('country') || '',
-    supplierCode: supplierCodeFromPath || searchParams.get('sup') || undefined,
-    supplierRid: supplierRidFromPath || searchParams.get('uid') || undefined,
+    countryCode: countryCode,
+    supplierCode: supplierCodeFromPath,
+    supplierRid: supplierRidFromPath,
     extraParams: Object.fromEntries(searchParams.entries()),
     ip: req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown",
     userAgent: req.headers.get("user-agent") || "unknown"

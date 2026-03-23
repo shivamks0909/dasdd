@@ -1,0 +1,91 @@
+[dotenv@17.3.1] injecting env (8) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+InsForge Client Initialized: {
+  baseUrl: 'https://cpim43si.us-west.insforge.app',
+  hasDatabase: true,
+  hasAuth: true,
+  hasStorage: true
+}
+[
+  {
+    "id": "b16606ef-91f2-4dcd-aebe-c5821b63f023",
+    "project_id": "f211fda1-a341-46b6-92ae-1cb85365a5e5",
+    "project_code": "QWDQDQW",
+    "country_code": "IN",
+    "survey_url": "https://track.opinioninsights.in/r/sdaweq/VERCEL/",
+    "status": "active",
+    "created_at": "2026-03-22T09:57:08.727705+00:00"
+  },
+  {
+    "id": "3c86d214-6ed4-48be-9a29-1826e1049cdf",
+    "project_id": "f211fda1-a341-46b6-92ae-1cb85365a5e5",
+    "project_code": "QWDQDQW",
+    "country_code": "IN",
+    "survey_url": "https://track.opinioninsights.in/r/sdaweq/VERCEL/[UID]",
+    "status": "active",
+    "created_at": "2026-03-22T20:54:03.579332+00:00"
+  },
+  {
+    "id": "916f8d66-c1e6-44c3-b700-89c5451d8416",
+    "project_id": "f211fda1-a341-46b6-92ae-1cb85365a5e5",
+    "project_code": "QWDQDQW",
+    "country_code": "IN",
+    "survey_url": "https://track.opinioninsights.in/r/sdaweq/VERCEL/[UID]",
+    "status": "active",
+    "created_at": "2026-03-22T20:54:47.918586+00:00"
+  },
+  {
+    "id": "842abb48-077f-4839-94bf-dd1396cb344d",
+    "project_id": "fb38f334-8a56-425e-9e1b-1b181a583e48",
+    "project_code": "SDAWEQ",
+    "country_code": "GL",
+    "survey_url": "https://track.opinioninsights.in/r/sdaweq/VERCEL/",
+    "status": "active",
+    "created_at": "2026-03-22T20:56:11.240865+00:00"
+  },
+  {
+    "id": "8b92a531-5b70-4abb-b8f8-616bcdda4b1b",
+    "project_id": "fb38f334-8a56-425e-9e1b-1b181a583e48",
+    "project_code": "SDAWEQ",
+    "country_code": "GL",
+    "survey_url": "https://dasdd-smoky.vercel.app/pages/complete?pid=PRJXXXX&uid=",
+    "status": "active",
+    "created_at": "2026-03-22T20:59:08.328864+00:00"
+  },
+  {
+    "id": "917b28ea-2118-4703-95e9-d53135039c2c",
+    "project_id": "fb38f334-8a56-425e-9e1b-1b181a583e48",
+    "project_code": "SDAWEQ",
+    "country_code": "IN",
+    "survey_url": "https://dasdd-smoky.vercel.app/pages/complete?pid=PRJXXXX&uid=",
+    "status": "active",
+    "created_at": "2026-03-22T21:00:05.844135+00:00"
+  },
+  {
+    "id": "222e9c1a-2a49-45ee-a731-17f5b5e32cb2",
+    "project_id": "351e6068-5152-4278-a14f-497962a7e847",
+    "project_code": "PATHTEST",
+    "country_code": "IN",
+    "survey_url": "https://track.opinioninsights.in/r/sdaweq/VERCEL/[UID]",
+    "status": "active",
+    "created_at": "2026-03-23T03:01:41.922903+00:00"
+  },
+  {
+    "id": "4fbc067f-27ca-4e3b-b50e-f00ba6e9de1a",
+    "project_id": "351e6068-5152-4278-a14f-497962a7e847",
+    "project_code": "PATHTEST",
+    "country_code": "IN",
+    "survey_url": "https://track.opinioninsights.in/complete?pid=sdaweq&uid=",
+    "status": "active",
+    "created_at": "2026-03-23T04:06:22.67581+00:00"
+  },
+  {
+    "id": "6b51a639-fc27-45e7-a2cf-a33d306b2f80",
+    "project_id": "351e6068-5152-4278-a14f-497962a7e847",
+    "project_code": "PATHTEST",
+    "country_code": "GL",
+    "survey_url": "https://track.opinioninsights.in/complete?pid=sdaweq&uid=",
+    "status": "active",
+    "created_at": "2026-03-23T04:07:15.979931+00:00"
+  }
+]
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 76
